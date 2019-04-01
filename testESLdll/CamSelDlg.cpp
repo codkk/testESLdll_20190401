@@ -40,6 +40,7 @@ void CamSelDlg::DoDataExchange(CDataExchange* pDX)
 
 
 BEGIN_MESSAGE_MAP(CamSelDlg, CDialog)
+	ON_BN_CLICKED(IDC_BUTTON_SAVECAM, &CamSelDlg::OnBnClickedButtonSavecam)
 END_MESSAGE_MAP()
 
 
@@ -63,6 +64,7 @@ BOOL CamSelDlg::OnInitDialog()
 			str = ValueList[i].S();
 			m_comboCameralist.InsertString(i, str);
 		}
+		m_comboCameralist.SetCurSel(0);
 	}
 	catch (HalconCpp::HException & except)
 	{
@@ -73,4 +75,10 @@ BOOL CamSelDlg::OnInitDialog()
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // 异常: OCX 属性页应返回 FALSE
+}
+
+//选择的相机型号写入文件
+void CamSelDlg::OnBnClickedButtonSavecam()
+{
+	// TODO: 在此添加控件通知处理程序代码
 }

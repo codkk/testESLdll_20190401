@@ -25,4 +25,5 @@ protected:
 public:
 	CComboBox m_comboCameralist;
 	virtual BOOL OnInitDialog();
+	afx_msg void OnBnClickedButtonSavecam();
 };
