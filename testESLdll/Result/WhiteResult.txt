@@ -1,0 +1,8 @@
+[WhiteScreenResult]
+Result = FAIL
+Count = 3
+Area2 = 11138
+Area1 = 28894
+Area0 = 12609
+FailImagePath = ResImg\ResultFAIL_WhiteScreen_3_15__17£º11£º52
+Message = DEFECT FAIL
