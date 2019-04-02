@@ -5,7 +5,10 @@
 #include "testESLdll.h"
 #include "CamSelDlg.h"
 #include "afxdialogex.h"
+#include "Ini.h"
 
+#define PATH_CAM_CONFIG "Config\\CamConfig.ini"
+#define NODE_CAM_CONFIG "CamConfig" //相机设置
 //异常处理函数
 void MyExcepHandle(const HalconCpp::HException &except)
 {
@@ -25,7 +28,7 @@ IMPLEMENT_DYNAMIC(CamSelDlg, CDialog)
 CamSelDlg::CamSelDlg(CWnd* pParent /*=NULL*/)
 	: CDialog(IDD_DIALOG_SELECTCAM, pParent)
 {
-
+	m_strCamName = "default";
 }
 
 CamSelDlg::~CamSelDlg()
@@ -61,8 +64,26 @@ BOOL CamSelDlg::OnInitDialog()
 		for (int i = 0; i < CamNum; i++)
 		{
 			CString str;
+			CString strShow;
 			str = ValueList[i].S();
-			m_comboCameralist.InsertString(i, str);
+			// | device:USB2_5M(2)@UE500901474 | interface:DVPCAMERA::USB | producer:C:\Program Files (x86)\Do3think\DVP2\DVPCameraTL.cti
+			int idx1 = str.Find("|", 0);
+			if (-1 != idx1)
+			{
+				int idx2 = str.Find("|", idx1 + 1);
+				if (-1 == idx1)
+					idx2 = str.GetLength() - 1;
+				int cont = idx2 - idx1;
+				strShow = str.Mid(idx1+1, cont-1);
+				strShow.Trim();
+				int idx3 = strShow.Find("device:");
+				if (-1 != idx3)
+				{
+					strShow = strShow.Right(strShow.GetLength()-7);
+				}
+			}
+			
+			m_comboCameralist.InsertString(i, strShow);
 		}
 		m_comboCameralist.SetCurSel(0);
 	}
@@ -80,5 +101,38 @@ BOOL CamSelDlg::OnInitDialog()
 //选择的相机型号写入文件
 void CamSelDlg::OnBnClickedButtonSavecam()
 {
-	// TODO: 在此添加控件通知处理程序代码
+	if (IDOK != AfxMessageBox("是否保存当前选择？", MB_OKCANCEL))
+	{
+		return;
+	}
+	int nsel = m_comboCameralist.GetCurSel();
+	if (nsel == -1)
+	{
+		AfxMessageBox("请选择相机名");
+		return;
+	}
+	m_comboCameralist.GetLBText(nsel, m_strCamName);
+	if (saveCamConfig(PATH_CAM_CONFIG))
+	{
+		AfxMessageBox("保存成功");
+	}
+	else
+	{
+		AfxMessageBox("保存失败");
+	}
+}
+
+
+bool  CamSelDlg::saveCamConfig(char* pPath)
+{
+	CIni iniFile;
+	if (!iniFile.SetValue(NODE_CAM_CONFIG, "Name", m_strCamName)) //最大值
+	{
+		return false;
+	}
+	if (!iniFile.Write(pPath))
+	{
+		return false;
+	}
+	return true;
 }

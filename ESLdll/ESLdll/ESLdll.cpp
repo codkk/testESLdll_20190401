@@ -52,6 +52,7 @@ using namespace HalconCpp;
 #define RESULT_MSG_FAIL_DEFECT "DEFECT FAIL" //检测到缺陷
 
 #define CONFIG_FILE "Config\\ESLconfig.ini"  //配置文件文件名
+#define PATH_CAM_CONFIG "Config\\CamConfig.ini" //相机配置文件名
 #define NODE_WHITESCREEN_CONFIG "WhiteScreenConfig" //节点
 #define NODE_BLACKSCREEN_CONFIG "BlackScreenConfig"
 #define NODE_GRAYSCALE_CONFIG "GrayScaleConfig"
@@ -128,6 +129,11 @@ ParaForLcd g_Para_Blue;
 ParaForLcd g_Para_Black;
 
 ResultForLcd g_Result;	//检测结果
+HTuple hv_WindowHandle_White; //结果显示窗口
+HTuple hv_WindowHandle_Red;
+HTuple hv_WindowHandle_Green;
+HTuple hv_WindowHandle_Blue;
+HTuple hv_WindowHandle_Black;
 
 //发生错误的类别信息
 std::string strErrorMsg[] = {
@@ -811,6 +817,9 @@ bool loadConfig(char* pPath)
 
 	return true;
 }
+
+
+
 //加载灰阶测试标准
 bool loadGrayStd(char* pPath)
 {
@@ -1129,16 +1138,58 @@ bool getImageFromCam(HObject& hImage)
 		
 	return true;
 }
+//设置结果显示窗口， 
+bool EslSetResWnd(int SrcreenType, CWnd* pWnd)
+{
+	try
+	{
+		HTuple wndHandle;
+		//窗口
+		CRect Rect;
+		pWnd->GetWindowRect(&Rect);
+		if (wndHandle.Length())
+			CloseWindow(wndHandle);
+		OpenWindow(0, 0, Rect.Width(), Rect.Height(), (Hlong)(pWnd->m_hWnd), "visible", "", &wndHandle);
+		SetDraw(wndHandle, "margin");
+		SetColor(wndHandle, "green");
+		HalconCpp::SetSystem("tsp_width", IMG_W);
+		HalconCpp::SetSystem("tsp_height", IMG_H);
+		HalconCpp::SetPart(wndHandle, 0, 0, IMG_H - 1, IMG_W - 1);
 
+		switch (SrcreenType)
+		{
+		case SCREEN_WHITE:
+			hv_WindowHandle_White = wndHandle;
+			break;
+		case SCREEN_RED:
+			hv_WindowHandle_Red = wndHandle;
+			break;
+		case SCREEN_GREEN:
+			hv_WindowHandle_Green = wndHandle;
+			break;
+		case SCREEN_BLUE:
+			hv_WindowHandle_Blue = wndHandle;
+			break;
+		case SCREEN_BLACK:
+			hv_WindowHandle_Black = wndHandle;
+			break;
+		default:
+			break;
+		}
+	}
+	catch (HalconCpp::HException & except)
+	{
+		ShowException(except);
+		return false;
+	}
+	return true;
+}
 //初始化dll
 bool EslInitDll(CWnd* pWnd)
 {
 	try
 	{
 		//加载相机相关
-
-
-
 		//窗口
 		CRect Rect;
 		pWnd->GetWindowRect(&Rect);
@@ -1178,7 +1229,7 @@ bool EslInitDll(CWnd* pWnd)
 		}
 
 		//连接相机
-		loadConfig(CONFIG_FILE);
+		loadConfig(PATH_CAM_CONFIG);
 		char pstr[1024];
 		memset(pstr, '\0', 1024);
 		sprintf_s(pstr, "%s", m_strCamName);
@@ -1203,6 +1254,22 @@ bool EslUnInitDll()
 		CloseFramegrabber(hv_AcqHandle);//关闭相机，关闭
 	if (hv_WindowHandle.Length())
 		CloseWindow(hv_WindowHandle);
+
+	if (hv_WindowHandle_White.Length())
+		CloseWindow(hv_WindowHandle_White);
+
+	if (hv_WindowHandle_Red.Length())
+		CloseWindow(hv_WindowHandle_Red);
+
+	if (hv_WindowHandle_Green.Length())
+		CloseWindow(hv_WindowHandle_Green);
+
+	if (hv_WindowHandle_Blue.Length())
+		CloseWindow(hv_WindowHandle_Blue);
+
+	if (hv_WindowHandle_Black.Length())
+		CloseWindow(hv_WindowHandle_Black);
+
 	return true;
 }
 
@@ -1648,16 +1715,98 @@ int Run()
 
 	return 0;
 }
+//判断结果，并在屏幕上显示结果，图像 ， OKNG
+bool JudgeResult(bool show = false)
+{
+	//显示到屏幕
+	HTuple wndhandle;
+	HObject ImageTmp;
+	switch (g_Result.m_screenType)
+	{
+	case T_WHITE_SCR:
+		wndhandle = hv_WindowHandle_White;
+		break;
+	case T_RED_SCR:
+		wndhandle = hv_WindowHandle_Red;
+		break;
+	case T_GREEN_SCR:
+		wndhandle = hv_WindowHandle_Green;
+		break;
+	case T_BLUE_SCR:
+		wndhandle = hv_WindowHandle_Blue;
+		break;
+	case T_BLACK_SCR:
+		wndhandle = hv_WindowHandle_Black;
+		break;
+	default:
+		return false;
+	}
+	
+	//如果是屏幕分离检测问题
+	if (g_Result.m_resType == RES_TYPE_SCREEN)
+	{
+		//显示图像
+		if (wndhandle.Length())
+		{
+			DispObj(g_Image, wndhandle);
+		}
+		SetTposition(wndhandle, HTuple(0 + 5), (HTuple(0) + 5));
+		SetColor(wndhandle, "red");
+		WriteString(wndhandle, "NG");
+		return false;
+	}
 
+	//其他
+	if (show)
+	{
+		//显示图像
+		if (wndhandle.Length())
+		{
+			DispObj(g_Image, wndhandle);
+		}
+		//显示OK
+		HalconCpp::SetDraw(wndhandle, "fill");
+		SetTposition(wndhandle, HTuple(0 + 5), (HTuple(0) + 5));
+		//HObject rectangle;
+		if (g_Result.m_resType == RES_TYPE_OK)
+		{
+			//GenRectangle1(&rectangle, 0, 0, )
+			SetColor(wndhandle, "green");
+			WriteString(wndhandle, "OK");
+			return true;
+		}
+		else
+		{
+			SetColor(wndhandle, "red");
+			WriteString(wndhandle, "NG");
+			return false;
+		}
+	}
+
+	//显示NG
+	return true;
+}
 //检测白屏缺点
 bool EslCheckLightScreen()
 {
 	g_Para = g_Para_White;
+	g_Result.m_screenType = T_WHITE_SCR;
+	g_Result.m_resType = RES_TYPE_OK;
 	if (EslFindScreen())
 	{
+		//如果屏幕区域缺陷，则直接报NG， 不用查找亮点暗点
+		if (!JudgeResult()) return false;
+		
 		//检测亮点暗点
+		g_Result.m_resType = RES_TYPE_OK;
 		HObject ho_ConnectedRegions, ho_ConnectedRegions_Light;
 		DetectSpot(g_ImageGray, &ho_ConnectedRegions, &ho_ConnectedRegions_Light);
+		if (!JudgeResult(true))
+		{
+			;
+		}
+		
+
 		DispObj(g_Image, hv_WindowHandle);
 		SetColor(hv_WindowHandle, "green");
 		DispObj(g_RegionScreen, hv_WindowHandle);
@@ -1674,11 +1823,21 @@ bool EslCheckLightScreen()
 
 bool EslCheckRedScreen()
 {
+	g_Result.m_screenType = T_RED_SCR;
+	g_Result.m_resType = RES_TYPE_OK;
 	g_Para = g_Para_Red;
 	if (EslFindScreen())
 	{
+		if (!JudgeResult()) return false;
+
+		g_Result.m_resType = RES_TYPE_OK;
 		HObject ho_ConnectedRegions, ho_ConnectedRegions_Light;
 		DetectSpot(g_ImageRed, &ho_ConnectedRegions, &ho_ConnectedRegions_Light);
+		if (!JudgeResult(true))
+		{
+			;
+		}
+		
 		DispObj(g_Image, hv_WindowHandle);
 		//DispObj(g_ImageRed, hv_WindowHandle);
 		SetColor(hv_WindowHandle, "green");
@@ -1700,11 +1859,21 @@ bool EslCheckRedScreen()
 
 bool EslCheckGreenScreen()
 {
+	g_Result.m_screenType = T_GREEN_SCR;
+	g_Result.m_resType = RES_TYPE_OK;
 	g_Para = g_Para_Green;
 	if (EslFindScreen())
 	{
+		if (!JudgeResult()) return false;
+
+		g_Result.m_resType = RES_TYPE_OK;
 		HObject ho_ConnectedRegions, ho_ConnectedRegions_Light;
 		DetectSpot(g_ImageGreen, &ho_ConnectedRegions, &ho_ConnectedRegions_Light);
+		if (!JudgeResult(true))
+		{
+			;
+		}
+		
 		DispObj(g_Image, hv_WindowHandle);
 		SetColor(hv_WindowHandle, "green");
 		DispObj(g_RegionScreen, hv_WindowHandle);
@@ -1722,11 +1891,21 @@ bool EslCheckGreenScreen()
 
 bool EslCheckBlueScreen()
 {
+	g_Result.m_screenType = T_BLUE_SCR;
+	g_Result.m_resType = RES_TYPE_OK;
 	g_Para = g_Para_Blue;
 	if (EslFindScreen())
 	{
+		if (!JudgeResult()) return false;
+
+		g_Result.m_resType = RES_TYPE_OK;
 		HObject ho_ConnectedRegions, ho_ConnectedRegions_Light;
 		DetectSpot(g_ImageBlue, &ho_ConnectedRegions, &ho_ConnectedRegions_Light);
+		if (!JudgeResult(true))
+		{
+			;
+		}
+
 		DispObj(g_Image, hv_WindowHandle);
 		SetColor(hv_WindowHandle, "green");
 		DispObj(g_RegionScreen, hv_WindowHandle);
@@ -1745,9 +1924,14 @@ bool EslCheckBlueScreen()
 //黑屏检测 （亮点）
 bool EslCheckBlackScreen()
 {
+	g_Result.m_screenType = T_BLACK_SCR;
+	g_Result.m_resType = RES_TYPE_OK;
 	g_Para = g_Para_Black;
 	if (EslFindScreen())
 	{
+		if (!JudgeResult()) return false;
+		
+		g_Result.m_resType = RES_TYPE_OK;
 		HObject RegionResult;
 		HTuple hv_HysteresisMin, hv_HysteresisMax, hv_AreaThr1, hv_MeanSize1, hv_DynThr;
 		hv_HysteresisMin = g_Para.m_HysteresisThrMin_Black;
@@ -1757,6 +1941,11 @@ bool EslCheckBlackScreen()
 		hv_DynThr = g_Para.m_DynThr_Black;
 		CheckLightSpotInDarkScreen(g_ImageGray, g_RegionScreen, &RegionResult, hv_HysteresisMin,
 			hv_HysteresisMax, hv_AreaThr1, hv_MeanSize1, hv_DynThr);
+		if (!JudgeResult(true))
+		{
+			;
+		}
+		
 		DispObj(g_Image, hv_WindowHandle);
 		SetColor(hv_WindowHandle, "green");
 		DispObj(g_RegionScreen, hv_WindowHandle);

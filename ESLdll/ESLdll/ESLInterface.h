@@ -1,4 +1,10 @@
 #pragma once
+
+#define SCREEN_WHITE 0
+#define SCREEN_RED 1
+#define SCREEN_GREEN 2
+#define SCREEN_BLUE 3
+#define SCREEN_BLACK 4
 //函数： 相机拍摄一张图像
 //返回值：false 发生异常  true 成功
 extern "C" _declspec(dllexport) bool EslGrabOneImage();
@@ -10,6 +16,11 @@ extern "C" _declspec(dllexport) bool EslLoadOneImage();
 //函数： 初始化dll
 //返回值：false 发生异常  true 成功
 extern "C" _declspec(dllexport) bool EslInitDll(CWnd* pWnd);
+
+//函数： 设置结果显示窗口
+//返回值：false 发生异常  true 成功
+extern "C" _declspec(dllexport) bool EslSetResWnd(int SrcreenType, CWnd* pWnd);
+
 
 //函数： 卸载dll资源
 //返回值：false 发生异常  true 成功

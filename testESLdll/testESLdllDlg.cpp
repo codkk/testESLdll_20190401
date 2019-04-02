@@ -81,7 +81,7 @@ void CtestESLdllDlg::DoDataExchange(CDataExchange* pDX)
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Check(pDX, IDC_CHECK_FROM_IMG, m_bFromFile);
 	DDX_Control(pDX, IDC_LIST_SHOW_RESULT, m_listResult);
-	DDX_Control(pDX, IDC_LIST1, m_listFaultImg);
+	
 }
 
 BEGIN_MESSAGE_MAP(CtestESLdllDlg, CDialogEx)
@@ -129,6 +129,11 @@ BOOL CtestESLdllDlg::OnInitDialog()
 	//加载dll初始化函数
 	pInitDll = (initDllFunc)::GetProcAddress(dllHandle, "EslInitDll");
 	if (pInitDll == NULL) {
+		AfxMessageBox("function  load failed!\n");
+		return false;
+	}
+	pSetResWnd = (setResWndFunc)::GetProcAddress(dllHandle, "EslSetResWnd");
+	if (pSetResWnd == NULL) {
 		AfxMessageBox("function  load failed!\n");
 		return false;
 	}
@@ -257,7 +262,27 @@ BOOL CtestESLdllDlg::OnInitDialog()
 		m_bInitSuccess = FALSE;
 		AfxMessageBox("打开相机失败");
 	}
-
+	//设置结果显示窗口
+	pWnd = GetDlgItem(IDC_STATIC_SCREEN_WHITE);
+	if (!pSetResWnd(0, pWnd))
+	{
+	}
+	pWnd = GetDlgItem(IDC_STATIC_SCREEN_RED);
+	if (!pSetResWnd(1, pWnd))
+	{
+	}
+	pWnd = GetDlgItem(IDC_STATIC_SCREEN_GREEN);
+	if (!pSetResWnd(2, pWnd))
+	{
+	}
+	pWnd = GetDlgItem(IDC_STATIC_SCREEN_BLUE);
+	if (!pSetResWnd(3, pWnd))
+	{
+	}
+	pWnd = GetDlgItem(IDC_STATIC_SCREEN_BLACK);
+	if (!pSetResWnd(4, pWnd))
+	{
+	}
 	//m_listFaultImg.InsertItem(0,);
 	//m_ImageList.Add()
 	bool res = true;

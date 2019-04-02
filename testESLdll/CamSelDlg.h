@@ -26,4 +26,6 @@ public:
 	CComboBox m_comboCameralist;
 	virtual BOOL OnInitDialog();
 	afx_msg void OnBnClickedButtonSavecam();
+	bool saveCamConfig(char* pPath);
+	CString m_strCamName;
 };

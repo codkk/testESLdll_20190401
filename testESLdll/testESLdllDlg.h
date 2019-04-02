@@ -12,6 +12,7 @@
 using namespace HalconCpp;
 //extern class ParaForLcd;
 typedef bool(*initDllFunc)(CWnd* pWnd);  //初始化
+typedef bool(*setResWndFunc)(int screenType, CWnd* pWnd);  //初始化
 typedef bool(*UnInitDllFunc)();  //反初始化
 typedef bool(*whiteScreenFunc)(char* pPath, bool bflag);
 typedef bool(*blackScreenFunc)(char* pPath, bool bflag);
@@ -52,7 +53,7 @@ public:
 
 	initDllFunc pInitDll;
 	UnInitDllFunc pUnInitDll;
-
+	setResWndFunc pSetResWnd;
 	whiteScreenFunc pFunc;
 	blackScreenFunc pFunc2;
 	grayScaleFunc pGrayscale;
