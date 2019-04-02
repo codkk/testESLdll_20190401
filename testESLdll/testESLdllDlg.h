@@ -108,4 +108,5 @@ public:
 	afx_msg void OnBnClickedButtonReload();
 	afx_msg void OnBnClickedButtonOpenimg2();
 	afx_msg void OnBnClickedButton8();
+	afx_msg void OnBnClickedButtonSetting();
 };

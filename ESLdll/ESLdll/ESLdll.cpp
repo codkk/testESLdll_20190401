@@ -129,6 +129,8 @@ ParaForLcd g_Para_Blue;
 ParaForLcd g_Para_Black;
 
 ResultForLcd g_Result;	//检测结果
+std::vector<ResultForLcd> g_vctResult; //缺陷的结果链表
+
 HTuple hv_WindowHandle_White; //结果显示窗口
 HTuple hv_WindowHandle_Red;
 HTuple hv_WindowHandle_Green;
@@ -179,7 +181,7 @@ void JudgeResult(HObject ho_ResultRegions, HObject ho_ImageSrc, HObject *ho_Imag
 	HTuple *hv_Row2, HTuple *hv_Col2);
 ///
 bool DetectSpot(HObject ImageSrc, HObject* RegionResults, HObject* RegionResults_Light);
-bool DealWithResult(HObject ho_ResultRegions, HObject ho_ImageSrc, HObject *ho_ImageParts, Type_Res type);
+bool DealWithResult(HObject ho_ResultRegions, HObject ho_ImageSrc, HObject *ho_ImageParts, T_SCR screentype, Type_Res type);
 ///////////////////////////////////////
 //异常处理函数
 void MyExcepHandle(const HalconCpp::HException &except)
@@ -1152,6 +1154,7 @@ bool EslSetResWnd(int SrcreenType, CWnd* pWnd)
 		OpenWindow(0, 0, Rect.Width(), Rect.Height(), (Hlong)(pWnd->m_hWnd), "visible", "", &wndHandle);
 		SetDraw(wndHandle, "margin");
 		SetColor(wndHandle, "green");
+		SetFont(wndHandle, "-Courier New-28-");
 		HalconCpp::SetSystem("tsp_width", IMG_W);
 		HalconCpp::SetSystem("tsp_height", IMG_H);
 		HalconCpp::SetPart(wndHandle, 0, 0, IMG_H - 1, IMG_W - 1);
@@ -1199,6 +1202,7 @@ bool EslInitDll(CWnd* pWnd)
 		OpenWindow(0, 0, Rect.Width(), Rect.Height(), (Hlong)(pWnd->m_hWnd), "visible", "", &hv_WindowHandle);
 		SetDraw(hv_WindowHandle, "margin");
 		SetColor(hv_WindowHandle, "green");
+		SetFont(hv_WindowHandle, "-Courier New-28-");
 		HalconCpp::SetSystem("tsp_width", IMG_W);
 		HalconCpp::SetSystem("tsp_height", IMG_H);
 		HalconCpp::SetPart(hv_WindowHandle, 0, 0, IMG_H - 1, IMG_W - 1);
@@ -1508,9 +1512,9 @@ bool EslFindScreen()
 		return true;
 	}
 	
-	FindScreen(processImage, &g_RegionScreen);
+	//FindScreen(processImage, &g_RegionScreen);
 	
-	return true;
+	//return true;
 	//二值化
 	HObject ho_Regions, ho_RegionErosion, ho_RegionDilation, ho_ConnectedRegions, ho_SelectedRegions, ho_SelectedRegions1;
 
@@ -1532,6 +1536,7 @@ bool EslFindScreen()
 	if ((hv_Number_edge == 0))
 	{
 		g_Result.m_resType = RES_TYPE_SCREEN;
+		g_Result.m_strMsg = strErrorMsg[RES_TYPE_SCREEN];
 		return true;
 	}
 	FillUp(ho_SelectedRegions1, &ho_RegionFillUp6);
@@ -1596,6 +1601,7 @@ bool EslFindScreen()
 			if ((hv_Number_edge == 0))
 			{
 				g_Result.m_resType = RES_TYPE_SCREEN;
+				g_Result.m_strMsg = strErrorMsg[RES_TYPE_SCREEN];
 				return true;
 			}
 			//)选择左右的第2条边缘
@@ -1613,6 +1619,7 @@ bool EslFindScreen()
 			if ((hv_Number_edge == 0))
 			{
 				g_Result.m_resType = RES_TYPE_SCREEN;
+				g_Result.m_strMsg = strErrorMsg[RES_TYPE_SCREEN];
 				return true;
 			}
 			//)选择上下边缘的第2条边缘
@@ -1630,6 +1637,7 @@ bool EslFindScreen()
 			if ((hv_Number_edge == 0))
 			{
 				g_Result.m_resType = RES_TYPE_SCREEN;
+				g_Result.m_strMsg = strErrorMsg[RES_TYPE_SCREEN];
 				return true;
 			}
 			//)选择左右的第1条边缘
@@ -1647,6 +1655,7 @@ bool EslFindScreen()
 			if ((hv_Number_edge == 0))
 			{
 				g_Result.m_resType = RES_TYPE_SCREEN;
+				g_Result.m_strMsg = strErrorMsg[RES_TYPE_SCREEN];
 				return true;
 			}
 			//）集合
@@ -1703,6 +1712,18 @@ bool EslFindScreen()
 			//完成
 			g_Result.m_resType = RES_TYPE_OK;
 		}
+		else
+		{
+			g_Result.m_resType = RES_TYPE_SCREEN;
+			g_Result.m_strMsg = strErrorMsg[RES_TYPE_SCREEN];
+			return true;
+		}
+	}
+	else
+	{
+		g_Result.m_resType = RES_TYPE_SCREEN;
+		g_Result.m_strMsg = strErrorMsg[RES_TYPE_SCREEN];
+		return true;
 	}
 	return true;
 }
@@ -1711,17 +1732,25 @@ bool EslFindScreen()
 int Run()
 {
 	//查找屏幕区域
-	EslFindScreen();
+	//EslFindScreen();
+	bool ret = EslCheckLightScreen();
+	EslCheckRedScreen();
+	EslCheckGreenScreen();
+	EslCheckBlueScreen();
+	if (ret) //只有当白屏的屏幕区域正常时才进行黑屏检测
+	{
+		EslCheckBlackScreen();
+	}
 
 	return 0;
 }
 //判断结果，并在屏幕上显示结果，图像 ， OKNG
-bool JudgeResult(bool show = false)
+bool JudgeResultAndShow(T_SCR screenType, bool show = false )
 {
 	//显示到屏幕
 	HTuple wndhandle;
 	HObject ImageTmp;
-	switch (g_Result.m_screenType)
+	switch (screenType)
 	{
 	case T_WHITE_SCR:
 		wndhandle = hv_WindowHandle_White;
@@ -1750,35 +1779,62 @@ bool JudgeResult(bool show = false)
 		{
 			DispObj(g_Image, wndhandle);
 		}
-		SetTposition(wndhandle, HTuple(0 + 5), (HTuple(0) + 5));
+		SetTposition(wndhandle, HTuple(0), (HTuple(0) ));
 		SetColor(wndhandle, "red");
 		WriteString(wndhandle, "NG");
+
+		//在主窗口显示错误信息
+		SetTposition(hv_WindowHandle, HTuple(0 + 55), (HTuple(0)));
+		SetColor(hv_WindowHandle, "red");
+		WriteString(hv_WindowHandle, "NG");
+		
+		WriteString(hv_WindowHandle, g_Result.m_strMsg.c_str());
 		return false;
 	}
 
 	//其他
 	if (show)
 	{
-		//显示图像
+		//显示图像到小窗口
 		if (wndhandle.Length())
 		{
 			DispObj(g_Image, wndhandle);
 		}
-		//显示OK
+		//是否OK
+		bool bOk = true;
+		for (int i = 0; i < g_vctResult.size(); i++)
+		{
+			if (screenType == g_vctResult[i].m_screenType)
+			{
+				bOk = false;
+				break;
+			}
+		}
+
 		HalconCpp::SetDraw(wndhandle, "fill");
-		SetTposition(wndhandle, HTuple(0 + 5), (HTuple(0) + 5));
+		SetTposition(wndhandle, HTuple(0), (HTuple(0)));
 		//HObject rectangle;
-		if (g_Result.m_resType == RES_TYPE_OK)
+		if (bOk)//显示OK
 		{
 			//GenRectangle1(&rectangle, 0, 0, )
 			SetColor(wndhandle, "green");
 			WriteString(wndhandle, "OK");
+			SetTposition(hv_WindowHandle, HTuple(0 + 55), (HTuple(0)));
+			SetColor(hv_WindowHandle, "green");
+			WriteString(hv_WindowHandle, "OK");
 			return true;
 		}
 		else
 		{
 			SetColor(wndhandle, "red");
 			WriteString(wndhandle, "NG");
+
+			//在主窗口显示错误信息
+			SetTposition(hv_WindowHandle, HTuple(0 + 55), (HTuple(0)));
+			SetColor(hv_WindowHandle, "red");
+			WriteString(hv_WindowHandle, "NG");
+			//SetTposition(wndhandle, HTuple(0 + 55), (HTuple(0) + 5));
+			//WriteString(hv_WindowHandle, g_Result.m_strMsg.c_str());
 			return false;
 		}
 	}
@@ -1795,18 +1851,13 @@ bool EslCheckLightScreen()
 	if (EslFindScreen())
 	{
 		//如果屏幕区域缺陷，则直接报NG， 不用查找亮点暗点
-		if (!JudgeResult()) return false;
+		if (!JudgeResultAndShow(g_Result.m_screenType)) return false;
 		
 		//检测亮点暗点
 		g_Result.m_resType = RES_TYPE_OK;
 		HObject ho_ConnectedRegions, ho_ConnectedRegions_Light;
 		DetectSpot(g_ImageGray, &ho_ConnectedRegions, &ho_ConnectedRegions_Light);
-		if (!JudgeResult(true))
-		{
-			;
-		}
-		
-
+		//缺陷显示到主窗
 		DispObj(g_Image, hv_WindowHandle);
 		SetColor(hv_WindowHandle, "green");
 		DispObj(g_RegionScreen, hv_WindowHandle);
@@ -1815,8 +1866,12 @@ bool EslCheckLightScreen()
 		SetColor(hv_WindowHandle, "yellow");
 		DispObj(ho_ConnectedRegions_Light, hv_WindowHandle);
 		
-		DealWithResult(ho_ConnectedRegions, g_Image, &g_ImageParts, RES_TYPE_DARK_SPOT);
-		DealWithResult(ho_ConnectedRegions_Light, g_Image, &g_ImageParts, RES_TYPE_BRIGHT_SPOT);
+		DealWithResult(ho_ConnectedRegions, g_Image, &g_ImageParts, T_WHITE_SCR, RES_TYPE_DARK_SPOT);
+		DealWithResult(ho_ConnectedRegions_Light, g_Image, &g_ImageParts, T_WHITE_SCR, RES_TYPE_BRIGHT_SPOT);
+		if (!JudgeResultAndShow(T_WHITE_SCR, true))
+		{
+			;
+		}
 	}
 	return true;
 }
@@ -1828,15 +1883,11 @@ bool EslCheckRedScreen()
 	g_Para = g_Para_Red;
 	if (EslFindScreen())
 	{
-		if (!JudgeResult()) return false;
+		if (!JudgeResultAndShow(g_Result.m_screenType)) return false;
 
 		g_Result.m_resType = RES_TYPE_OK;
 		HObject ho_ConnectedRegions, ho_ConnectedRegions_Light;
 		DetectSpot(g_ImageRed, &ho_ConnectedRegions, &ho_ConnectedRegions_Light);
-		if (!JudgeResult(true))
-		{
-			;
-		}
 		
 		DispObj(g_Image, hv_WindowHandle);
 		//DispObj(g_ImageRed, hv_WindowHandle);
@@ -1847,7 +1898,12 @@ bool EslCheckRedScreen()
 		SetColor(hv_WindowHandle, "yellow");
 		DispObj(ho_ConnectedRegions_Light, hv_WindowHandle);
 
-		
+		DealWithResult(ho_ConnectedRegions, g_Image, &g_ImageParts, T_RED_SCR, RES_TYPE_DARK_SPOT);
+		DealWithResult(ho_ConnectedRegions_Light, g_Image, &g_ImageParts, T_RED_SCR, RES_TYPE_BRIGHT_SPOT);
+		if (!JudgeResultAndShow(T_RED_SCR, true))
+		{
+			;
+		}
 
 	}
 	else
@@ -1864,15 +1920,11 @@ bool EslCheckGreenScreen()
 	g_Para = g_Para_Green;
 	if (EslFindScreen())
 	{
-		if (!JudgeResult()) return false;
+		if (!JudgeResultAndShow(g_Result.m_screenType)) return false;
 
 		g_Result.m_resType = RES_TYPE_OK;
 		HObject ho_ConnectedRegions, ho_ConnectedRegions_Light;
 		DetectSpot(g_ImageGreen, &ho_ConnectedRegions, &ho_ConnectedRegions_Light);
-		if (!JudgeResult(true))
-		{
-			;
-		}
 		
 		DispObj(g_Image, hv_WindowHandle);
 		SetColor(hv_WindowHandle, "green");
@@ -1881,6 +1933,13 @@ bool EslCheckGreenScreen()
 		DispObj(ho_ConnectedRegions, hv_WindowHandle);
 		SetColor(hv_WindowHandle, "yellow");
 		DispObj(ho_ConnectedRegions_Light, hv_WindowHandle);
+
+		DealWithResult(ho_ConnectedRegions, g_Image, &g_ImageParts, T_GREEN_SCR, RES_TYPE_DARK_SPOT);
+		DealWithResult(ho_ConnectedRegions_Light, g_Image, &g_ImageParts, T_GREEN_SCR, RES_TYPE_BRIGHT_SPOT);
+		if (!JudgeResultAndShow(T_GREEN_SCR, true))
+		{
+			;
+		}
 	}
 	else
 	{
@@ -1896,15 +1955,11 @@ bool EslCheckBlueScreen()
 	g_Para = g_Para_Blue;
 	if (EslFindScreen())
 	{
-		if (!JudgeResult()) return false;
+		if (!JudgeResultAndShow(g_Result.m_screenType)) return false;
 
 		g_Result.m_resType = RES_TYPE_OK;
 		HObject ho_ConnectedRegions, ho_ConnectedRegions_Light;
 		DetectSpot(g_ImageBlue, &ho_ConnectedRegions, &ho_ConnectedRegions_Light);
-		if (!JudgeResult(true))
-		{
-			;
-		}
 
 		DispObj(g_Image, hv_WindowHandle);
 		SetColor(hv_WindowHandle, "green");
@@ -1913,6 +1968,13 @@ bool EslCheckBlueScreen()
 		DispObj(ho_ConnectedRegions, hv_WindowHandle);
 		SetColor(hv_WindowHandle, "yellow");
 		DispObj(ho_ConnectedRegions_Light, hv_WindowHandle);
+
+		DealWithResult(ho_ConnectedRegions, g_Image, &g_ImageParts, T_BLUE_SCR, RES_TYPE_DARK_SPOT);
+		DealWithResult(ho_ConnectedRegions_Light, g_Image, &g_ImageParts, T_BLUE_SCR, RES_TYPE_BRIGHT_SPOT);
+		if (!JudgeResultAndShow(T_BLUE_SCR, true))
+		{
+			;
+		}
 	}
 	else
 	{
@@ -1929,7 +1991,7 @@ bool EslCheckBlackScreen()
 	g_Para = g_Para_Black;
 	if (EslFindScreen())
 	{
-		if (!JudgeResult()) return false;
+		if (!JudgeResultAndShow(g_Result.m_screenType)) return false;
 		
 		g_Result.m_resType = RES_TYPE_OK;
 		HObject RegionResult;
@@ -1941,16 +2003,18 @@ bool EslCheckBlackScreen()
 		hv_DynThr = g_Para.m_DynThr_Black;
 		CheckLightSpotInDarkScreen(g_ImageGray, g_RegionScreen, &RegionResult, hv_HysteresisMin,
 			hv_HysteresisMax, hv_AreaThr1, hv_MeanSize1, hv_DynThr);
-		if (!JudgeResult(true))
-		{
-			;
-		}
 		
 		DispObj(g_Image, hv_WindowHandle);
 		SetColor(hv_WindowHandle, "green");
 		DispObj(g_RegionScreen, hv_WindowHandle);
 		SetColor(hv_WindowHandle, "red");
 		DispObj(RegionResult, hv_WindowHandle);
+
+		DealWithResult(RegionResult, g_Image, &g_ImageParts, T_BLACK_SCR, RES_TYPE_BRIGHT_SPOT);
+		if (!JudgeResultAndShow(T_BLACK_SCR, true))
+		{
+			;
+		}
 	}
 
 
@@ -2065,12 +2129,33 @@ bool DetectSpot(HObject ImageSrc, HObject* RegionResults, HObject* RegionResults
 	return true;
 }
 
-bool DealWithResult(HObject ho_ResultRegions, HObject ho_ImageSrc, HObject * ho_ImageParts, Type_Res type)
+bool DealWithResult(HObject ho_ResultRegions, HObject ho_ImageSrc, HObject * ho_ImageParts, T_SCR screentype, Type_Res type)
 {
+	//判断缺陷的大小面积位置， 并截图。
 	HTuple Areas, CentRow, CentCol, Row1, Col1, Row2, Col2;
 	JudgeResult(ho_ResultRegions, ho_ImageSrc, ho_ImageParts, 3364, 2748, 120,
 		80, 20, &Areas, &CentRow, &CentCol, &Row1, &Col1, &Row2,
 		&Col2);
+	//保存结果
+	int num = Areas.Length();
+	for (int i = 0; i < num; i++)
+	{
+		//
+		ResultForLcd resTmp;
+		resTmp.m_screenType = screentype;
+		resTmp.m_resType = type;
+		resTmp.m_targetColX = CentCol[i];
+		resTmp.m_targetRowY = CentRow[i];
+		resTmp.m_Area = Areas[i];
+		resTmp.m_lfRow1 = Row1[i];
+		resTmp.m_lfCol1 = Col1[i];
+		resTmp.m_lfRow2 = Row2[i];
+		resTmp.m_lfCol2 = Col2[i];
+		resTmp.m_strMsg = strErrorMsg[type];
+		g_vctResult.push_back(resTmp);
+	}
+
+	//保存截图
 	if ((*ho_ImageParts).IsInitialized())
 	{
 		HTuple num, hv_Index;
@@ -2795,28 +2880,35 @@ void JudgeResult(HObject ho_ResultRegions, HObject ho_ImageSrc, HObject *ho_Imag
 				hv_boxW = ((const HTuple&)hv_w)[hv_Index];
 				hv_boxH = ((const HTuple&)hv_h)[hv_Index];
 			}
-			(*hv_Row1) = HTuple((*hv_CentRow)[hv_Index]) - (hv_boxH / 2.0);
-			(*hv_Col1) = HTuple((*hv_CentCol)[hv_Index]) - (hv_boxW / 2.0);
-			(*hv_Row2) = HTuple((*hv_CentRow)[hv_Index]) + (hv_boxH / 2.0);
-			(*hv_Col2) = HTuple((*hv_CentCol)[hv_Index]) + (hv_boxW / 2.0);
-			if (0 != ((*hv_Row1)<0))
+			HTuple R1, C1, R2, C2;
+			R1 = HTuple((*hv_CentRow)[hv_Index]) - (hv_boxH / 2.0);
+			C1 = HTuple((*hv_CentCol)[hv_Index]) - (hv_boxW / 2.0);
+			R2 = HTuple((*hv_CentRow)[hv_Index]) + (hv_boxH / 2.0);
+			C2 = HTuple((*hv_CentCol)[hv_Index]) + (hv_boxW / 2.0);
+
+			if (0 != (R1<0))
 			{
-				(*hv_Row1) = 0;
+				R1 = 0;
 			}
-			if (0 != ((*hv_Col1)<0))
+			if (0 != (C1<0))
 			{
-				(*hv_Col1) = 0;
+				C1 = 0;
 			}
-			if (0 != ((*hv_Row2) >= hv_ImageH))
+			if (0 != (R2 >= hv_ImageH))
 			{
-				(*hv_Row2) = hv_ImageH - 1;
+				R2 = hv_ImageH - 1;
 			}
-			if (0 != ((*hv_Col2) >= hv_ImageW))
+			if (0 != (C2 >= hv_ImageW))
 			{
-				(*hv_Col2) = hv_ImageW - 1;
+				C2 = hv_ImageW - 1;
 			}
+
+			(*hv_Row1).Append(R1);
+			(*hv_Col1).Append(C1);
+			(*hv_Row2).Append(R2);
+			(*hv_Col2).Append(C2);
 			//4) 截图
-			CropPart(ho_ImageSrc, &ho_ImagePart, (*hv_Row1), (*hv_Col1), hv_boxW, hv_boxH);
+			CropPart(ho_ImageSrc, &ho_ImagePart, R1, C1, hv_boxW, hv_boxH);
 			ConcatObj((*ho_ImageParts), ho_ImagePart, &(*ho_ImageParts));
 			if (count >= hv_MaxShowNum)
 			{

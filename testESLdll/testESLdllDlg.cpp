@@ -101,6 +101,7 @@ BEGIN_MESSAGE_MAP(CtestESLdllDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_RELOAD, &CtestESLdllDlg::OnBnClickedButtonReload)
 	ON_BN_CLICKED(IDC_BUTTON_OPENIMG2, &CtestESLdllDlg::OnBnClickedButtonOpenimg2)
 	ON_BN_CLICKED(IDC_BUTTON8, &CtestESLdllDlg::OnBnClickedButton8)
+	ON_BN_CLICKED(IDC_BUTTON_SETTING, &CtestESLdllDlg::OnBnClickedButtonSetting)
 END_MESSAGE_MAP()
 
 
@@ -517,4 +518,10 @@ void CtestESLdllDlg::OnBnClickedButton8()
 {
 	CamSelDlg dlg;
 	dlg.DoModal();
+}
+
+//参数设置
+void CtestESLdllDlg::OnBnClickedButtonSetting()
+{
+	// TODO: 在此添加控件通知处理程序代码
 }
