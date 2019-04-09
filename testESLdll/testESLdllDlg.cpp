@@ -40,12 +40,19 @@
 #define RESULT_MSG_FAIL_DEFECT "DEFECT FAIL" //检测到缺陷
 
 
-
+//工作线程
+DWORD WINAPI AutoTestHandleThread(LPVOID lpParam)
+{
+	CtestESLdllDlg* pMdlg = (CtestESLdllDlg*)lpParam;
+	int ret = pMdlg->ServerRun();
+	return ret;
+}
 
 CtestESLdllDlg::CtestESLdllDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(IDD_TESTESLDLL_DIALOG, pParent)
 	, m_bFromFile(FALSE)
 {
+	m_bExit = false;
 	m_bInitSuccess = TRUE;
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 
@@ -66,6 +73,8 @@ CtestESLdllDlg::CtestESLdllDlg(CWnd* pParent /*=NULL*/)
 
 	pFuncGrabOneImage = NULL;
 	pFuncLoadOneImage = NULL;
+
+	m_hTestEvent = CreateEventA(NULL, TRUE, FALSE, NULL);
 }
 
 CtestESLdllDlg::~CtestESLdllDlg()
@@ -87,6 +96,7 @@ void CtestESLdllDlg::DoDataExchange(CDataExchange* pDX)
 BEGIN_MESSAGE_MAP(CtestESLdllDlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_MESSAGE(WM_MYMSG, &CtestESLdllDlg::ShowResult)
 	ON_BN_CLICKED(IDC_BUTTON1, &CtestESLdllDlg::OnBnClickedButton1)
 	ON_BN_CLICKED(IDC_BUTTON2, &CtestESLdllDlg::OnBnClickedButton2)
 	ON_BN_CLICKED(IDC_BUTTON3, &CtestESLdllDlg::OnBnClickedButton3)
@@ -102,6 +112,9 @@ BEGIN_MESSAGE_MAP(CtestESLdllDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_OPENIMG2, &CtestESLdllDlg::OnBnClickedButtonOpenimg2)
 	ON_BN_CLICKED(IDC_BUTTON8, &CtestESLdllDlg::OnBnClickedButton8)
 	ON_BN_CLICKED(IDC_BUTTON_SETTING, &CtestESLdllDlg::OnBnClickedButtonSetting)
+	ON_BN_CLICKED(IDC_BUTTON_AUTORUN, &CtestESLdllDlg::OnBnClickedButtonAutorun)
+	ON_BN_CLICKED(IDC_BUTTON_STOPAUTORUN, &CtestESLdllDlg::OnBnClickedButtonStopautorun)
+	ON_WM_CLOSE()
 END_MESSAGE_MAP()
 
 
@@ -286,6 +299,27 @@ BOOL CtestESLdllDlg::OnInitDialog()
 	}
 	//m_listFaultImg.InsertItem(0,);
 	//m_ImageList.Add()
+	//创建一个服务器
+	int iRlt = m_serverNet.ServerInit("127.0.0.1", 3000);
+	if (iRlt == 0)
+	{
+		m_strMsg.Format("初始化成功。");
+		SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
+		//AfxMessageBox("服务器 init successful.\n");
+		//m_serverNet.ServerRun();
+	}
+	else
+	{
+		CString str;
+		str.Format("服务器初始化失败 error: %d\n", iRlt);
+		AfxMessageBox(str);
+		return false;
+	}
+
+	//开启一个主线程
+	//开启工作线程
+	CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)AutoTestHandleThread, this, 0, NULL);
+
 	bool res = true;
 	return res;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -524,4 +558,219 @@ void CtestESLdllDlg::OnBnClickedButton8()
 void CtestESLdllDlg::OnBnClickedButtonSetting()
 {
 	// TODO: 在此添加控件通知处理程序代码
+}
+
+//自动运行
+void CtestESLdllDlg::OnBnClickedButtonAutorun()
+{
+	SetEvent(m_hTestEvent);
+	
+	//ServerNet serverNet;
+	//int iRlt = serverNet.ServerInit("127.0.0.1", 3000);
+	//if (iRlt == 0)
+	//{
+	//	AfxMessageBox("servr init successful.\n");
+	//	serverNet.ServerRun();
+	//}
+	//else
+	//{
+	//	CString str;
+	//	str.Format("server init failed with error: %d\n", iRlt);
+	//	AfxMessageBox(str);
+	//}
+
+}
+
+int CtestESLdllDlg::ServerRun()
+{
+	// 公开连接
+	listen(m_serverNet.m_sock, 5);
+
+	SOCKADDR_IN tcpAddr;
+	int len = sizeof(sockaddr);
+	SOCKET newSocket;
+	char buf[1024];
+	int rval;
+	bool bClear = false;
+	do
+	{
+		//等待开始信号
+		WaitForSingleObject(m_hTestEvent, INFINITE);
+		if (m_bExit) //退出程序
+		{
+			break;
+		}
+		// 接收信息
+		m_strMsg = "等待接收下一个命令...";
+		if(bClear)
+			SendMessage(WM_MYMSG, 1, (LPARAM)&m_strMsg);
+		else
+			SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
+		newSocket = accept(m_serverNet.m_sock, (sockaddr*)&tcpAddr, &len);
+
+		if (newSocket == INVALID_SOCKET)
+		{
+			// 非可用socket
+			printf("invalid socket occured.\n");
+		}
+		else
+		{
+			// 可用的新socket连接
+			printf("new socket connect: %d\n", newSocket);
+
+			// 消息处理
+			do
+			{
+				//printf("process\n");
+				// 接收数据
+				memset(buf, 0, sizeof(buf));
+				rval = recv(newSocket, buf, 1024, 0);
+
+				if (rval == SOCKET_ERROR)
+					// 该异常通常发生在未closeSocket就退出时
+				{
+					printf("recv socket error.\n");
+					break;
+				}
+
+				else if (rval == 0)
+					// 0表示正常退出
+					printf("socket %d connect end.\n", newSocket);
+				else
+				{
+					// 显示接收到的数据
+					printf("recv msg: %s\n", buf);
+					m_strMsg.Format("接收到:%s", buf);
+					SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
+					//根据不同数据，调用不同的接口,并返回数据
+					std::string Msg = buf;
+					std::string strRet = RunFromMsg(Msg);
+					if ("" == strRet) //未处理
+					{
+						//
+						strRet = "Error para";
+						m_serverNet.ServerSend(newSocket, strRet.c_str(), strRet.length());
+					}
+					else
+					{
+						if (strRet == "TESTOVER")
+						{
+							bClear = true;
+						}
+						else
+						{
+							bClear = false;
+						}
+						//发送返回值
+						m_serverNet.ServerSend(newSocket, strRet.c_str(), strRet.length());
+					}
+				}
+
+			} while (rval != 0);
+
+			// 关于接收的socket
+			closesocket(newSocket);
+		}
+	} while (1);
+
+	// 关闭自身socket
+	closesocket(m_serverNet.m_sock);
+	return 0;
+}
+
+//算法OK返回0， NG返回1， 其他返回-1
+std::string CtestESLdllDlg::RunFromMsg(std::string Msg) //根据消息运行不同的功能
+{
+	Sleep(11000);
+	return "OK"; //调试
+	bool ret = false;
+	if ("WHITE" == Msg)
+	{
+		m_strMsg.Format("开始白屏测试...");
+		SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
+		if (pFuncLightScreen)
+			ret = pFuncLightScreen();
+		else
+			ret = false;
+	}
+	else if ("RED" == Msg)
+	{
+		m_strMsg.Format("开始红屏测试...");
+		SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
+		ret = pFuncRedScreen();
+	}
+	else if ("GREEN" == Msg)
+	{
+		m_strMsg.Format("开始绿屏测试...");
+		SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
+		ret = pFuncGreenScreen();
+	}
+	else if ("BLUE" == Msg)
+	{
+		m_strMsg.Format("开始蓝屏测试...");
+		SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
+		ret = pFuncBlueScreen();
+	}
+	else if ("BLACK" == Msg)
+	{
+		m_strMsg.Format("开始黑屏测试...");
+		SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
+		ret = pFuncBlackScreen();
+	}
+	else if ("END" == Msg)
+	{
+		m_strMsg.Format("结束测试...");
+		SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
+		return "TESTOVER";
+	}
+	else
+	{
+		m_strMsg.Format("无效命令...");
+		SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
+		return "";
+	}
+
+	if (ret)
+		return "OK";
+	else
+		return "NG";
+}
+
+
+void CtestESLdllDlg::OnBnClickedButtonStopautorun()
+{
+	ResetEvent(m_hTestEvent);
+}
+
+
+void CtestESLdllDlg::OnClose()
+{
+	// TODO: 在此添加消息处理程序代码和/或调用默认值
+	if (WAIT_OBJECT_0 == WaitForSingleObject(m_hTestEvent, 10)) //如果停止
+	{
+		AfxMessageBox(_T("请先使程序停止，在关闭程序。"));
+		return;
+	}
+
+	m_bExit = true;
+	SetEvent(m_hTestEvent);
+	Sleep(500);
+
+
+	CDialogEx::OnClose();
+}
+
+
+LRESULT CtestESLdllDlg::ShowResult(WPARAM wParam, LPARAM lParam)
+{
+	CString* strData = (CString *)lParam;
+	int clear = (int)wParam;
+	m_listResult.AddString(*strData);
+	m_listResult.AddString(" ");
+	m_listResult.SetCurSel(m_listResult.GetCount() - 1);
+	if (clear == 1)
+	{
+		m_listResult.ResetContent();
+	}
+	return 0;
 }

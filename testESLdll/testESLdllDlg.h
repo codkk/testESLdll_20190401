@@ -9,7 +9,11 @@
 #include "afxcmn.h"
 #include "../ESLdll/ESLdll/ResultForLcd.h"
 #include "../ESLdll/ESLdll/ParaForLcd.h"
+#include "ServerNet.h"
 using namespace HalconCpp;
+
+#define WM_MYMSG WM_USER+88   //实时显示
+
 //extern class ParaForLcd;
 typedef bool(*initDllFunc)(CWnd* pWnd);  //初始化
 typedef bool(*setResWndFunc)(int screenType, CWnd* pWnd);  //初始化
@@ -75,6 +79,13 @@ public:
 	checkGreenScreenFunc pFuncGreenScreen;
 	checkBlueScreenFunc pFuncBlueScreen;
 	checkBlackScreenFunc pFuncBlackScreen;
+
+	//流程控制
+	HANDLE	m_hTestEvent;						//开始测试事件
+	bool m_bExit;				//退出程序
+	CString m_strMsg;
+	//服务器
+	ServerNet m_serverNet;
 // 实现
 protected:
 	HICON m_hIcon;
@@ -97,6 +108,9 @@ public:
 
 
 	void ReadAndShowResult(char* pPath);
+	int ServerRun();  //运行服务器
+	std::string RunFromMsg(std::string Msg); //根据消息运行不同的功能
+	afx_msg LRESULT ShowResult(WPARAM, LPARAM);//自定义消息处理，显示结果
 	afx_msg void OnBnClickedButtonSaveimg();
 	afx_msg void OnBnClickedButton6();
 	afx_msg void OnBnClickedButton7();
@@ -109,4 +123,7 @@ public:
 	afx_msg void OnBnClickedButtonOpenimg2();
 	afx_msg void OnBnClickedButton8();
 	afx_msg void OnBnClickedButtonSetting();
+	afx_msg void OnBnClickedButtonAutorun();
+	afx_msg void OnBnClickedButtonStopautorun();
+	afx_msg void OnClose();
 };
