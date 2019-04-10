@@ -11,6 +11,9 @@
 # include "./Class/Ini.h"
 using namespace HalconCpp;
 
+typedef int(*CheckMe)();
+typedef int(*RegistMe)();
+
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -59,6 +62,7 @@ using namespace HalconCpp;
 #define NODE_SCREENREGION_CONFIG "ScreenRegionConfig"
 #define NODE_CHESSBOARD_CONFIG "ChessBoardConfig"
 #define NODE_CAM_CONFIG "CamConfig" //相机设置
+
 //
 //TODO:  如果此 DLL 相对于 MFC DLL 是动态链接的，
 //		则从此 DLL 导出的任何调入
@@ -136,6 +140,10 @@ HTuple hv_WindowHandle_Red;
 HTuple hv_WindowHandle_Green;
 HTuple hv_WindowHandle_Blue;
 HTuple hv_WindowHandle_Black;
+
+//软件使用期限
+CheckMe pCheckme = NULL;
+RegistMe pRegistme = NULL;
 
 //发生错误的类别信息
 std::string strErrorMsg[] = {
@@ -1187,11 +1195,84 @@ bool EslSetResWnd(int SrcreenType, CWnd* pWnd)
 	}
 	return true;
 }
+
+//软件使用期限
+int CheckKey()
+{
+	int ret = -2;
+	HMODULE dllHandle = NULL;
+	dllHandle = LoadLibrary("yance0.dll");
+	if (dllHandle == NULL)
+	{
+		AfxMessageBox("LOAD dll FAIL");
+		return ret;
+	}
+
+	//加载dll初始化函数
+	pCheckme = (CheckMe)::GetProcAddress(dllHandle, "check");
+	if (pCheckme == NULL) {
+		AfxMessageBox("function  load failed!\n");
+		FreeLibrary(dllHandle);
+		return ret;
+	}
+	pRegistme = (RegistMe)::GetProcAddress(dllHandle, "registerMe");
+	if (pRegistme == NULL) {
+		AfxMessageBox("function  load failed!\n");
+		FreeLibrary(dllHandle);
+		return ret;
+	}
+	int re = pCheckme();
+	switch (re)
+	{
+	case 0:
+		//AfxMessageBox("successed"); 
+		break;
+	case 1:
+		break;
+	case 2://获取不了当前电脑的MAC
+		AfxMessageBox("获取不了当前电脑序列号"); break;
+		break;
+	case 3:
+		AfxMessageBox("当前电脑序列号不匹配"); break;
+		break;
+	case 4:
+		break;
+	case 5:
+		break;
+	case 6://写入新时间发生错误
+		AfxMessageBox("软件发生错误"); break;
+		break;
+	case 7:
+		AfxMessageBox("时间不正确"); break;
+		break;
+	case 8:
+		AfxMessageBox("软件已过期"); break;
+		break;
+	case -1: //没有注册过
+		AfxMessageBox("软件未注册"); break;
+		//if (pRegistme())
+		//{
+		//	AfxMessageBox("注册fail");
+		//}
+		//else
+		//{
+		//	AfxMessageBox("注册successed");
+		//}
+		break;
+	default:
+		break;
+	}
+
+	FreeLibrary(dllHandle);
+	return re;
+}
+
 //初始化dll
 bool EslInitDll(CWnd* pWnd)
 {
 	try
 	{
+		if (0 != CheckKey()) return false;
 		//加载相机相关
 		//窗口
 		CRect Rect;

@@ -52,6 +52,7 @@ CtestESLdllDlg::CtestESLdllDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(IDD_TESTESLDLL_DIALOG, pParent)
 	, m_bFromFile(FALSE)
 {
+	m_strPathImg = TXT_PATH_IMG;
 	m_bExit = false;
 	m_bInitSuccess = TRUE;
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
@@ -139,6 +140,12 @@ BOOL CtestESLdllDlg::OnInitDialog()
 		AfxMessageBox("LOAD FAIL");
 		return TRUE;
 	}
+
+	//如果不存在则创建当前日期的文件夹保存图片
+
+	//如果不存在则创建当前日期的文件夹保存日志
+
+	//每打开软件一次，则在当前日期文件夹下创建一个日志
 
 	//加载dll初始化函数
 	pInitDll = (initDllFunc)::GetProcAddress(dllHandle, "EslInitDll");
@@ -692,6 +699,9 @@ std::string CtestESLdllDlg::RunFromMsg(std::string Msg) //根据消息运行不同的功能
 			ret = pFuncLightScreen();
 		else
 			ret = false;
+
+		//根据日期创建文件夹
+		
 	}
 	else if ("RED" == Msg)
 	{
@@ -731,9 +741,18 @@ std::string CtestESLdllDlg::RunFromMsg(std::string Msg) //根据消息运行不同的功能
 	}
 
 	if (ret)
+	{
+		//保存图片到日期目录下,如果不存在则创建
+
 		return "OK";
+	}
 	else
+	{
+		//保存图片到日期目录下NG文件夹，如果不存在则创建
+
 		return "NG";
+	}
+
 }
 
 

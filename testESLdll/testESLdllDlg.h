@@ -13,7 +13,7 @@
 using namespace HalconCpp;
 
 #define WM_MYMSG WM_USER+88   //实时显示
-
+#define TXT_PATH_IMG ".//SaveImg"
 //extern class ParaForLcd;
 typedef bool(*initDllFunc)(CWnd* pWnd);  //初始化
 typedef bool(*setResWndFunc)(int screenType, CWnd* pWnd);  //初始化
@@ -84,6 +84,7 @@ public:
 	HANDLE	m_hTestEvent;						//开始测试事件
 	bool m_bExit;				//退出程序
 	CString m_strMsg;
+	CString m_strPathImg;		//图像的保存路径和名称
 	//服务器
 	ServerNet m_serverNet;
 // 实现
