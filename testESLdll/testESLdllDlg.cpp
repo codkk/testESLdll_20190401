@@ -116,6 +116,7 @@ BEGIN_MESSAGE_MAP(CtestESLdllDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_AUTORUN, &CtestESLdllDlg::OnBnClickedButtonAutorun)
 	ON_BN_CLICKED(IDC_BUTTON_STOPAUTORUN, &CtestESLdllDlg::OnBnClickedButtonStopautorun)
 	ON_WM_CLOSE()
+	ON_BN_CLICKED(IDC_BUTTON_REGIST, &CtestESLdllDlg::OnBnClickedButtonRegist)
 END_MESSAGE_MAP()
 
 
@@ -792,4 +793,40 @@ LRESULT CtestESLdllDlg::ShowResult(WPARAM wParam, LPARAM lParam)
 		m_listResult.ResetContent();
 	}
 	return 0;
+}
+
+
+void CtestESLdllDlg::OnBnClickedButtonRegist()
+{
+	dllKeyHandle = LoadLibrary("yance0.dll");
+	if (dllKeyHandle == NULL)
+	{
+		AfxMessageBox("LOAD dll FAIL");
+		return;
+	}
+
+	//¼ÓÔØdll³õÊ¼»¯º¯Êý
+	//pCheckme = (CheckMe)::GetProcAddress(dllKeyHandle, "check");
+	//if (pCheckme == NULL) {
+	//	AfxMessageBox("function  load failed!\n");
+	//	FreeLibrary(dllHandle);
+	//	return;
+	//}
+	pRegistme = (RegistMe)::GetProcAddress(dllKeyHandle, "registerMe");
+	if (pRegistme == NULL) {
+		AfxMessageBox("function  load failed!\n");
+		FreeLibrary(dllKeyHandle);
+		return;
+	}
+
+	//×¢²á
+	if (pRegistme())
+	{
+		AfxMessageBox("×¢²áfail");
+	}
+	else
+	{
+		AfxMessageBox("×¢²ásuccessed");
+	}
+	FreeLibrary(dllKeyHandle);
 }

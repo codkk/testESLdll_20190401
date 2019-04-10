@@ -40,6 +40,9 @@ typedef bool(*checkRedScreenFunc)(); //红屏检测
 typedef bool(*checkGreenScreenFunc)(); //绿屏检测
 typedef bool(*checkBlueScreenFunc)(); //蓝屏检测
 typedef bool(*checkBlackScreenFunc)(); //黑屏检测亮点
+
+typedef int(*CheckMe)();
+typedef int(*RegistMe)();
 // CtestESLdllDlg 对话框
 class CtestESLdllDlg : public CDialogEx
 {
@@ -85,6 +88,12 @@ public:
 	bool m_bExit;				//退出程序
 	CString m_strMsg;
 	CString m_strPathImg;		//图像的保存路径和名称
+
+	//注册
+	HMODULE dllKeyHandle;
+	CheckMe pCheckme;
+	RegistMe pRegistme;
+
 	//服务器
 	ServerNet m_serverNet;
 // 实现
@@ -127,4 +136,5 @@ public:
 	afx_msg void OnBnClickedButtonAutorun();
 	afx_msg void OnBnClickedButtonStopautorun();
 	afx_msg void OnClose();
+	afx_msg void OnBnClickedButtonRegist();
 };
