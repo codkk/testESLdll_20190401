@@ -1598,7 +1598,7 @@ bool EslGrabOneImage()
 bool EslLoadOneImage()
 {
 	//打开文件选择窗口
-	CFileDialog dlg(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, _T("位图文件(*.BMP)|*.BMP|jpg文件(*.jpg)|*.jpg||"));
+	CFileDialog dlg(TRUE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, NULL/*_T("位图文件(*.BMP)|*.BMP|jpg文件(*.jpg)|*.jpg||")*/);
 	if (IDOK == dlg.DoModal())
 	{
 		CString imgpath;
