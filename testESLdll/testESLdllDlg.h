@@ -14,6 +14,8 @@ using namespace HalconCpp;
 
 #define WM_MYMSG WM_USER+88   //实时显示
 #define TXT_PATH_IMG ".//SaveImg"
+#define TXT_PATH_IMG_ROOT "D://SaveImage"
+#define TXT_PATH_LOG_ROOT "D://LogFile"
 //extern class ParaForLcd;
 typedef bool(*initDllFunc)(CWnd* pWnd);  //初始化
 typedef bool(*setResWndFunc)(int screenType, CWnd* pWnd);  //初始化
@@ -40,6 +42,8 @@ typedef bool(*checkRedScreenFunc)(); //红屏检测
 typedef bool(*checkGreenScreenFunc)(); //绿屏检测
 typedef bool(*checkBlueScreenFunc)(); //蓝屏检测
 typedef bool(*checkBlackScreenFunc)(); //黑屏检测亮点
+
+typedef bool(*saveImg)(char* path); //保存图片
 
 typedef int(*CheckMe)();
 typedef int(*RegistMe)();
@@ -83,11 +87,19 @@ public:
 	checkBlueScreenFunc pFuncBlueScreen;
 	checkBlackScreenFunc pFuncBlackScreen;
 
+	saveImg pFuncSaveImage;
+
 	//流程控制
 	HANDLE	m_hTestEvent;						//开始测试事件
 	bool m_bExit;				//退出程序
 	CString m_strMsg;
-	CString m_strPathImg;		//图像的保存路径和名称
+	CString m_strPathImgRoot;   //
+	CString m_strPathImg;		//图像的保存路径（日期）
+	CString m_strPathImgTime;		//图像的保存路径（日期）
+	CString m_strPathImgTimeNG;		//图像的保存路径（小时分钟秒）
+
+	CString m_strPathLogRoot;   //
+	CString m_strPathLog;       //日志保存的根目录，不带斜杠
 
 	//注册
 	HMODULE dllKeyHandle;
@@ -121,6 +133,8 @@ public:
 	int ServerRun();  //运行服务器
 	std::string RunFromMsg(std::string Msg); //根据消息运行不同的功能
 	afx_msg LRESULT ShowResult(WPARAM, LPARAM);//自定义消息处理，显示结果
+	void SaveImagetoFile(bool ret, T_SCR type);
+	bool GetImagefrom(bool bLoad = false);
 	afx_msg void OnBnClickedButtonSaveimg();
 	afx_msg void OnBnClickedButton6();
 	afx_msg void OnBnClickedButton7();
@@ -137,4 +151,6 @@ public:
 	afx_msg void OnBnClickedButtonStopautorun();
 	afx_msg void OnClose();
 	afx_msg void OnBnClickedButtonRegist();
+	afx_msg void OnBnClickedCheckSaveimage();
+	BOOL m_bSaveImg;
 };

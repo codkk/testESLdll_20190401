@@ -200,6 +200,7 @@
     <ClInclude Include="targetver.h" />
     <ClInclude Include="testESLdll.h" />
     <ClInclude Include="testESLdllDlg.h" />
+    <ClInclude Include="XFunc.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CamSelDlg.cpp" />
@@ -218,6 +219,7 @@
     </ClCompile>
     <ClCompile Include="testESLdll.cpp" />
     <ClCompile Include="testESLdllDlg.cpp" />
+    <ClCompile Include="XFunc.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="testESLdll.rc" />

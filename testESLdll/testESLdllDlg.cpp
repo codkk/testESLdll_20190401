@@ -8,6 +8,7 @@
 #include "afxdialogex.h"
 #include "Ini.h"
 #include "CamSelDlg.h"
+#include "XFunc.h"
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -51,7 +52,10 @@ DWORD WINAPI AutoTestHandleThread(LPVOID lpParam)
 CtestESLdllDlg::CtestESLdllDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(IDD_TESTESLDLL_DIALOG, pParent)
 	, m_bFromFile(FALSE)
+	, m_bSaveImg(FALSE)
 {
+	m_strPathImgRoot = TXT_PATH_IMG_ROOT;
+	m_strPathLogRoot = TXT_PATH_LOG_ROOT;
 	m_strPathImg = TXT_PATH_IMG;
 	m_bExit = false;
 	m_bInitSuccess = TRUE;
@@ -75,6 +79,8 @@ CtestESLdllDlg::CtestESLdllDlg(CWnd* pParent /*=NULL*/)
 	pFuncGrabOneImage = NULL;
 	pFuncLoadOneImage = NULL;
 
+	pFuncSaveImage = NULL;
+
 	m_hTestEvent = CreateEventA(NULL, TRUE, FALSE, NULL);
 }
 
@@ -91,7 +97,8 @@ void CtestESLdllDlg::DoDataExchange(CDataExchange* pDX)
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Check(pDX, IDC_CHECK_FROM_IMG, m_bFromFile);
 	DDX_Control(pDX, IDC_LIST_SHOW_RESULT, m_listResult);
-	
+
+	DDX_Check(pDX, IDC_CHECK_SAVEIMAGE, m_bSaveImg);
 }
 
 BEGIN_MESSAGE_MAP(CtestESLdllDlg, CDialogEx)
@@ -117,6 +124,7 @@ BEGIN_MESSAGE_MAP(CtestESLdllDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_STOPAUTORUN, &CtestESLdllDlg::OnBnClickedButtonStopautorun)
 	ON_WM_CLOSE()
 	ON_BN_CLICKED(IDC_BUTTON_REGIST, &CtestESLdllDlg::OnBnClickedButtonRegist)
+	ON_BN_CLICKED(IDC_CHECK_SAVEIMAGE, &CtestESLdllDlg::OnBnClickedCheckSaveimage)
 END_MESSAGE_MAP()
 
 
@@ -133,6 +141,34 @@ BOOL CtestESLdllDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 	HObject ho_Image;
 	//ReadImage(&ho_Image, "SrcImg\\white.jpg");
+	SYSTEMTIME curT;
+	GetLocalTime(&curT);
+	CString filename;
+	filename.Format("//%d%02d%02d", curT.wYear, curT.wMonth, curT.wDay);
+	//如果不存在则创建当前日期的文件夹保存图片
+	if (!FolderExist(m_strPathImgRoot))
+	{
+		CreateFolder(m_strPathImgRoot);
+	}
+	m_strPathImg = m_strPathImgRoot + filename;
+	if (!FolderExist(m_strPathImg))
+	{
+		CreateFolder(m_strPathImg);
+	}
+
+	//如果不存在则创建当前日期的文件夹保存日志
+	if (!FolderExist(m_strPathLogRoot))
+	{
+		CreateFolder(m_strPathLogRoot);
+	}
+	m_strPathLog = m_strPathLogRoot + filename;
+	if (!FolderExist(m_strPathLog))
+	{
+		CreateFolder(m_strPathLog);
+	}
+
+	//每打开软件一次，则在当前日期文件夹下创建一个日志
+
 
 	// TODO: 在此添加额外的初始化代码
 	dllHandle = LoadLibrary("ESLdll.dll");
@@ -141,12 +177,6 @@ BOOL CtestESLdllDlg::OnInitDialog()
 		AfxMessageBox("LOAD FAIL");
 		return TRUE;
 	}
-
-	//如果不存在则创建当前日期的文件夹保存图片
-
-	//如果不存在则创建当前日期的文件夹保存日志
-
-	//每打开软件一次，则在当前日期文件夹下创建一个日志
 
 	//加载dll初始化函数
 	pInitDll = (initDllFunc)::GetProcAddress(dllHandle, "EslInitDll");
@@ -277,6 +307,12 @@ BOOL CtestESLdllDlg::OnInitDialog()
 		return false;
 	}
 
+	pFuncSaveImage = (saveImg)::GetProcAddress(dllHandle, "EslSaveImage");
+	if (pFuncSaveImage == NULL) {
+		AfxMessageBox("function  load failed!\n");
+		return false;
+	}
+
 	//dll初始化（连接相机， 显示）
 	CWnd * pWnd = GetDlgItem(IDC_STATIC_SHOW);
 	if (!pInitDll(pWnd))
@@ -311,7 +347,7 @@ BOOL CtestESLdllDlg::OnInitDialog()
 	int iRlt = m_serverNet.ServerInit("127.0.0.1", 3000);
 	if (iRlt == 0)
 	{
-		m_strMsg.Format("初始化成功。");
+		m_strMsg.Format("初始化成功。请点击开始。");
 		SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
 		//AfxMessageBox("服务器 init successful.\n");
 		//m_serverNet.ServerRun();
@@ -648,7 +684,7 @@ int CtestESLdllDlg::ServerRun()
 				{
 					// 显示接收到的数据
 					printf("recv msg: %s\n", buf);
-					m_strMsg.Format("接收到:%s", buf);
+					m_strMsg.Format("  接收到:%s", buf);
 					SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
 					//根据不同数据，调用不同的接口,并返回数据
 					std::string Msg = buf;
@@ -689,54 +725,77 @@ int CtestESLdllDlg::ServerRun()
 //算法OK返回0， NG返回1， 其他返回-1
 std::string CtestESLdllDlg::RunFromMsg(std::string Msg) //根据消息运行不同的功能
 {
-	Sleep(11000);
-	return "OK"; //调试
+	//Sleep(11000);
+	bool bLoadImg = true;
+	//return "OK"; //调试
 	bool ret = false;
 	if ("WHITE" == Msg)
 	{
-		m_strMsg.Format("开始白屏测试...");
+		m_strMsg.Format("  开始白屏测试...");
 		SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
-		if (pFuncLightScreen)
-			ret = pFuncLightScreen();
-		else
-			ret = false;
+		if (!GetImagefrom(bLoadImg)) return "NG";
+
+		ret = pFuncLightScreen();
 
 		//根据日期创建文件夹
+		SYSTEMTIME curT;
+		GetLocalTime(&curT);
+		CString filename;
+		CString filenameNG;
+		filename.Format("//%d%02d%02d", curT.wHour, curT.wMinute, curT.wSecond);  //按小时分钟秒命名
+		filenameNG.Format("//%d%02d%02d//NG", curT.wHour, curT.wMinute, curT.wSecond);  //按小时分钟秒命名
+		m_strPathImgTime = m_strPathImg + filename;
+		m_strPathImgTimeNG = m_strPathImg + filenameNG;
 		
+		SaveImagetoFile(ret, T_WHITE_SCR);
 	}
 	else if ("RED" == Msg)
 	{
-		m_strMsg.Format("开始红屏测试...");
+		m_strMsg.Format("  开始红屏测试...");
 		SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
+		if (!GetImagefrom(bLoadImg)) return "NG";
+
 		ret = pFuncRedScreen();
+
+		SaveImagetoFile(ret, T_RED_SCR);
 	}
 	else if ("GREEN" == Msg)
 	{
-		m_strMsg.Format("开始绿屏测试...");
+		m_strMsg.Format("  开始绿屏测试...");
 		SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
+		if (!GetImagefrom(bLoadImg)) return "NG";
 		ret = pFuncGreenScreen();
+
+		SaveImagetoFile(ret, T_GREEN_SCR);
 	}
 	else if ("BLUE" == Msg)
 	{
-		m_strMsg.Format("开始蓝屏测试...");
+		m_strMsg.Format("  开始蓝屏测试...");
 		SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
+		if (!GetImagefrom(bLoadImg)) return "NG";
 		ret = pFuncBlueScreen();
+
+		SaveImagetoFile(ret, T_BLUE_SCR);
 	}
 	else if ("BLACK" == Msg)
 	{
-		m_strMsg.Format("开始黑屏测试...");
+		m_strMsg.Format("  开始黑屏测试...");
 		SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
+		if (!GetImagefrom(bLoadImg)) return "NG";
 		ret = pFuncBlackScreen();
+
+		SaveImagetoFile(ret, T_BLACK_SCR);
+
 	}
 	else if ("END" == Msg)
 	{
-		m_strMsg.Format("结束测试...");
+		m_strMsg.Format("  结束测试...");
 		SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
 		return "TESTOVER";
 	}
 	else
 	{
-		m_strMsg.Format("无效命令...");
+		m_strMsg.Format("  无效命令");
 		SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
 		return "";
 	}
@@ -744,13 +803,15 @@ std::string CtestESLdllDlg::RunFromMsg(std::string Msg) //根据消息运行不同的功能
 	if (ret)
 	{
 		//保存图片到日期目录下,如果不存在则创建
-
+		m_strMsg.Format("  OK");
+		SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
 		return "OK";
 	}
 	else
 	{
 		//保存图片到日期目录下NG文件夹，如果不存在则创建
-
+		m_strMsg.Format("  NG");
+		SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
 		return "NG";
 	}
 
@@ -785,14 +846,86 @@ LRESULT CtestESLdllDlg::ShowResult(WPARAM wParam, LPARAM lParam)
 {
 	CString* strData = (CString *)lParam;
 	int clear = (int)wParam;
-	m_listResult.AddString(*strData);
-	m_listResult.AddString(" ");
-	m_listResult.SetCurSel(m_listResult.GetCount() - 1);
 	if (clear == 1)
 	{
 		m_listResult.ResetContent();
 	}
+	m_listResult.AddString(*strData);
+	m_listResult.AddString(" ");
+	m_listResult.SetCurSel(m_listResult.GetCount() - 1);
+
 	return 0;
+}
+
+void CtestESLdllDlg::SaveImagetoFile(bool ret, T_SCR type)
+{
+	//保存图片
+	if (!FolderExist(m_strPathImgTime))
+	{
+		CreateFolder(m_strPathImgTime);
+	}
+
+	CString strpathOK;
+	CString strpathNG;
+	switch (type)
+	{
+	case T_WHITE_SCR:
+		strpathOK = m_strPathImgTime + "//White";
+		strpathNG = m_strPathImgTimeNG + "//White";
+		break;
+	case T_GRAY_SCR:
+		strpathOK = m_strPathImgTime + "//Gray";
+		strpathNG = m_strPathImgTimeNG + "//Gray";
+		break;
+	case T_RED_SCR:
+		strpathOK = m_strPathImgTime + "//Red";
+		strpathNG = m_strPathImgTimeNG + "//Red";
+		break;
+	case T_GREEN_SCR:
+		strpathOK = m_strPathImgTime + "//Green";
+		strpathNG = m_strPathImgTimeNG + "//Green";
+		break;
+	case T_BLUE_SCR:
+		strpathOK = m_strPathImgTime + "//Blue";
+		strpathNG = m_strPathImgTimeNG + "//Blue";
+		break;
+	case T_BLACK_SCR:
+		strpathOK = m_strPathImgTime + "//Black";
+		strpathNG = m_strPathImgTimeNG + "//Black";
+		break;
+	case T_DUST_SCR:
+		strpathOK = m_strPathImgTime + "//Dust";
+		strpathNG = m_strPathImgTimeNG + "//Dust";
+		break;
+	default:
+		strpathOK = m_strPathImgTime + "//Uknown";
+		strpathNG = m_strPathImgTimeNG + "//Uknown";
+		break;
+	}
+
+
+	if (ret) //当前目录保存
+	{
+		pFuncSaveImage(strpathOK.GetBuffer());
+	}
+	else  //新建一个NG目录
+	{
+		if (!FolderExist(m_strPathImgTimeNG))
+		{
+			CreateFolder(m_strPathImgTimeNG);
+		}
+		pFuncSaveImage(strpathNG.GetBuffer());
+	}
+}
+
+bool CtestESLdllDlg::GetImagefrom(bool bLoad)
+{
+	bool ret = false;
+	if(bLoad)
+		ret = pFuncLoadOneImage();
+	else
+		ret = pFuncGrabOneImage();
+	return ret;
 }
 
 
@@ -829,4 +962,11 @@ void CtestESLdllDlg::OnBnClickedButtonRegist()
 		AfxMessageBox("注册successed");
 	}
 	FreeLibrary(dllKeyHandle);
+}
+
+
+void CtestESLdllDlg::OnBnClickedCheckSaveimage()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	UpdateData();
 }

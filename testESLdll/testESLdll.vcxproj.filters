@@ -48,6 +48,9 @@
     <ClInclude Include="ServerNet.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="XFunc.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="testESLdll.cpp">
@@ -72,6 +75,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="ServerNet.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="XFunc.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

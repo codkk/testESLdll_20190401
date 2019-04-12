@@ -56,3 +56,6 @@ extern "C" _declspec(dllexport) bool EslCheckBlackScreen();
 
 //重新加载para文件
 extern "C" _declspec(dllexport) bool EslReloadPara();
+
+//保存当前图像
+extern "C" _declspec(dllexport) bool EslSaveImage(char* path);

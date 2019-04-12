@@ -1138,8 +1138,15 @@ bool getImageFromCam(HObject& hImage)
 {
 	if (hv_AcqHandle.Length())
 	{
-		GrabImage(&hImage, hv_AcqHandle);
-		WriteImage(hImage, "bmp", 0, "GrabImage");
+		try
+		{
+			GrabImage(&hImage, hv_AcqHandle);
+			WriteImage(hImage, "bmp", 0, "GrabImage");
+		}
+		catch (HalconCpp::HException & except)
+		{
+			return false;
+		}
 	}
 	else
 	{
@@ -1272,7 +1279,7 @@ bool EslInitDll(CWnd* pWnd)
 {
 	try
 	{
-		if (0 != CheckKey()) return false;
+		//if (0 != CheckKey()) return false;
 		//加载相机相关
 		//窗口
 		CRect Rect;
@@ -1320,8 +1327,9 @@ bool EslInitDll(CWnd* pWnd)
 		sprintf_s(pstr, "%s", m_strCamName);
 		if (hv_AcqHandle.Length())
 			CloseFramegrabber(hv_AcqHandle);
+		AfxMessageBox(pstr);
 		OpenFramegrabber("GenICamTL", 0, 0, 0, 0, 0, 0, "progressive", -1, "default", -1,
-			"false", "default", pstr/*"USB2_5M(1)@UE500903614"*/, 0, -1, &hv_AcqHandle);
+			"false", "default", "default"/*pstr*//*"USB2_5M@UE500901474"*/, 0, -1, &hv_AcqHandle);
 
 		
 	}
@@ -1358,7 +1366,22 @@ bool EslUnInitDll()
 	return true;
 }
 
-
+bool EslSaveImage(char* path)
+{
+	try
+	{
+		if (g_Image.IsInitialized())
+		{
+			WriteImage(g_Image, "bmp", 0, path);
+			return true;
+		}
+	}
+	catch(HalconCpp::HException & except)
+	{
+		return false;
+	}
+	return false;
+}
 
 
 //关闭显示窗口
@@ -1546,8 +1569,9 @@ bool EslLoadOneImage()
 			ShowException(except);
 			return false;
 		}
+		return true;
 	}
-	return true;
+	return false;
 }
 
 //函数: 预处理图像并切分屏幕区域，
@@ -1951,10 +1975,12 @@ bool EslCheckLightScreen()
 		DealWithResult(ho_ConnectedRegions_Light, g_Image, &g_ImageParts, T_WHITE_SCR, RES_TYPE_BRIGHT_SPOT);
 		if (!JudgeResultAndShow(T_WHITE_SCR, true))
 		{
-			;
+			return false;
 		}
+		else
+			return true;
 	}
-	return true;
+	return false;
 }
 
 bool EslCheckRedScreen()
@@ -1983,8 +2009,10 @@ bool EslCheckRedScreen()
 		DealWithResult(ho_ConnectedRegions_Light, g_Image, &g_ImageParts, T_RED_SCR, RES_TYPE_BRIGHT_SPOT);
 		if (!JudgeResultAndShow(T_RED_SCR, true))
 		{
-			;
+			return false;
 		}
+		else
+			return true;
 
 	}
 	else
@@ -2019,8 +2047,10 @@ bool EslCheckGreenScreen()
 		DealWithResult(ho_ConnectedRegions_Light, g_Image, &g_ImageParts, T_GREEN_SCR, RES_TYPE_BRIGHT_SPOT);
 		if (!JudgeResultAndShow(T_GREEN_SCR, true))
 		{
-			;
+			return false;
 		}
+		else
+			return true;
 	}
 	else
 	{
@@ -2054,8 +2084,10 @@ bool EslCheckBlueScreen()
 		DealWithResult(ho_ConnectedRegions_Light, g_Image, &g_ImageParts, T_BLUE_SCR, RES_TYPE_BRIGHT_SPOT);
 		if (!JudgeResultAndShow(T_BLUE_SCR, true))
 		{
-			;
+			return false;
 		}
+		else
+			return true;
 	}
 	else
 	{
@@ -2094,8 +2126,10 @@ bool EslCheckBlackScreen()
 		DealWithResult(RegionResult, g_Image, &g_ImageParts, T_BLACK_SCR, RES_TYPE_BRIGHT_SPOT);
 		if (!JudgeResultAndShow(T_BLACK_SCR, true))
 		{
-			;
+			return false;
 		}
+		else
+			return true;
 	}
 
 
@@ -2236,6 +2270,7 @@ bool DealWithResult(HObject ho_ResultRegions, HObject ho_ImageSrc, HObject * ho_
 		g_vctResult.push_back(resTmp);
 	}
 
+	return true; //直接返回，不截图
 	//保存截图
 	if ((*ho_ImageParts).IsInitialized())
 	{
@@ -2257,7 +2292,7 @@ bool DealWithResult(HObject ho_ResultRegions, HObject ho_ImageSrc, HObject * ho_
 			count++;
 		}
 	}
-	return false;
+	return true;
 }
 
 void CheckDarkFuzzySpot(HObject ho_ImageMean, HObject ho_ImageFFT, HObject ho_ScreenRegion,
