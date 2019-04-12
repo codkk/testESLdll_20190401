@@ -9,6 +9,7 @@
 # include "HalconCpp.h" //halcon
 # include "HDevThread.h"
 # include "./Class/Ini.h"
+#include "DvpCamera.h"
 using namespace HalconCpp;
 
 typedef int(*CheckMe)();
@@ -114,6 +115,7 @@ HTuple hv_Whitestd, hv_Whitemax, hv_Whitemin; //背光 白屏的 标准值， 最大值， 最
 HTuple hv_Chessstd, hv_Chessmax, hv_Chessmin; //棋盘格 标准值， 最大值， 最小值，
 
 CString m_strCamName = "default";
+CString m_strCamIniFile = "";
 
 HObject g_Image;	   //rgb图像
 HObject g_ImageGray;	//灰度图像
@@ -144,6 +146,9 @@ HTuple hv_WindowHandle_Black;
 //软件使用期限
 CheckMe pCheckme = NULL;
 RegistMe pRegistme = NULL;
+
+//度申相机
+DvpCamera myCam;
 
 //发生错误的类别信息
 std::string strErrorMsg[] = {
@@ -824,7 +829,10 @@ bool loadConfig(char* pPath)
 	{
 		return false;
 	}
-
+	if (!iniFile.GetValue(NODE_CAM_CONFIG, "IniFile", m_strCamIniFile)) //最大值
+	{
+		return false;
+	}
 	return true;
 }
 
@@ -1325,13 +1333,22 @@ bool EslInitDll(CWnd* pWnd)
 		char pstr[1024];
 		memset(pstr, '\0', 1024);
 		sprintf_s(pstr, "%s", m_strCamName);
-		if (hv_AcqHandle.Length())
-			CloseFramegrabber(hv_AcqHandle);
-		AfxMessageBox(pstr);
-		OpenFramegrabber("GenICamTL", 0, 0, 0, 0, 0, 0, "progressive", -1, "default", -1,
-			"false", "default", "default"/*pstr*//*"USB2_5M@UE500901474"*/, 0, -1, &hv_AcqHandle);
-
-		
+		//if (hv_AcqHandle.Length())
+		//	CloseFramegrabber(hv_AcqHandle);
+		//AfxMessageBox(pstr);
+		//链接相机
+		if (myCam.OpenCamera(pstr) != DVP_STATUS_OK)
+			return false;
+		else
+		{
+			char pInifile[1024];
+			memset(pInifile, '\0', 1024);
+			sprintf_s(pInifile, "%s", m_strCamIniFile);
+			myCam.LoadConfig(pInifile);
+			myCam.StartCamera(); //开始数据流
+		}
+		//OpenFramegrabber("GenICamTL", 0, 0, 0, 0, 0, 0, "progressive", -1, "default", -1,
+		//	"false", "default", "default"/*pstr*//*"USB2_5M@UE500901474"*/, 0, -1, &hv_AcqHandle);	
 	}
 	catch (HalconCpp::HException & except)
 	{
@@ -1343,8 +1360,11 @@ bool EslInitDll(CWnd* pWnd)
 //反初始化dll
 bool EslUnInitDll()
 {
-	if(hv_AcqHandle.Length())
-		CloseFramegrabber(hv_AcqHandle);//关闭相机，关闭
+	//if(hv_AcqHandle.Length())
+	//	CloseFramegrabber(hv_AcqHandle);//关闭相机，关闭
+	myCam.StopCamera();
+	myCam.CloseCamera();
+
 	if (hv_WindowHandle.Length())
 		CloseWindow(hv_WindowHandle);
 
@@ -1544,8 +1564,34 @@ extern "C" _declspec(dllexport) bool chessBoardFromCam(bool bflag = true)
 //从相机采集一张图像
 bool EslGrabOneImage()
 {
-	bool ret = getImageFromCam(g_Image);
-	DispObj(g_Image, hv_WindowHandle);
+	bool ret = false;
+	//ret = getImageFromCam(g_Image);
+	//DispObj(g_Image, hv_WindowHandle);
+
+	if (myCam.GrabHalconImage() != DVP_STATUS_OK)
+	{
+		ret = false;
+	}
+	else
+	{
+		//ReadImage(&g_Image, "Temp.bmp");
+		g_Image = myCam.m_image.Clone();
+		DispObj(g_Image, hv_WindowHandle);
+		ret = true;
+	}
+
+	//if (myCam.GrabImageAndSave("Temp.bmp") != DVP_STATUS_OK)
+	//{
+	//	ret = false;
+	//}
+	//else
+	//{
+	//	ReadImage(&g_Image, "Temp.bmp");
+	//	//g_Image = myCam.m_image.Clone();
+	//	DispObj(g_Image, hv_WindowHandle);
+	//	ret = true;
+	//}
+
 	return ret;
 }
 //从文件选择打开图像

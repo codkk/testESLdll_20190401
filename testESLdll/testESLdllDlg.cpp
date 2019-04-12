@@ -726,7 +726,7 @@ int CtestESLdllDlg::ServerRun()
 std::string CtestESLdllDlg::RunFromMsg(std::string Msg) //根据消息运行不同的功能
 {
 	//Sleep(11000);
-	bool bLoadImg = true;
+	bool bLoadImg = false;
 	//return "OK"; //调试
 	bool ret = false;
 	if ("WHITE" == Msg)

@@ -191,6 +191,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Class\Ini.cpp" />
+    <ClCompile Include="DvpCamera.cpp" />
     <ClCompile Include="ESLdll.cpp" />
     <ClCompile Include="ParaForLcd.cpp" />
     <ClCompile Include="ResultForLcd.cpp" />
@@ -203,6 +204,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Class\Ini.h" />
+    <ClInclude Include="DvpCamera.h" />
     <ClInclude Include="ESLdll.h" />
     <ClInclude Include="ESLInterface.h" />
     <ClInclude Include="ParaForLcd.h" />
