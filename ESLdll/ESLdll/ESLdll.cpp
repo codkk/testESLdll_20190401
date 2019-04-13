@@ -22,6 +22,7 @@ typedef int(*RegistMe)();
 #define IMG_W 3664
 #define IMG_H 2748
 
+#define WM_MYMSG WM_USER+88   //实时显示
 
 #define WHITESCREEN_RESULT_FILE "Result\\WhiteResult.txt"  //结果文件文件名
 #define BLACKSCREEN_RESULT_FILE "Result\\BlackResult.txt"
@@ -137,6 +138,7 @@ ParaForLcd g_Para_Black;
 ResultForLcd g_Result;	//检测结果
 std::vector<ResultForLcd> g_vctResult; //缺陷的结果链表
 
+CWnd* g_pWnd = NULL;
 HTuple hv_WindowHandle_White; //结果显示窗口
 HTuple hv_WindowHandle_Red;
 HTuple hv_WindowHandle_Green;
@@ -1290,6 +1292,7 @@ bool EslInitDll(CWnd* pWnd)
 		//if (0 != CheckKey()) return false;
 		//加载相机相关
 		//窗口
+		g_pWnd = pWnd;
 		CRect Rect;
 		pWnd->GetWindowRect(&Rect);
 
@@ -1895,6 +1898,76 @@ int Run()
 
 	return 0;
 }
+
+void GetScreenType(T_SCR type, std::string & name)
+{
+	switch (type)
+	{
+	case T_WHITE_SCR:
+		name = "WHITE";
+		break;
+	case T_RED_SCR:
+		name = "RED";
+		break;
+	case T_GREEN_SCR:
+		name = "GREEN";
+		break;
+	case T_BLUE_SCR:
+		name = "BLUE";
+		break;
+	case T_BLACK_SCR:
+		name = "BLACK";
+		break;
+	default:
+		name = "UNKNOWN";
+		return ;
+	}
+}
+
+//记录结果到路径
+bool LogResult(char* path, int mode)
+{
+	FILE* pF = NULL;
+	pF = fopen(path, "a");
+	if (pF == NULL) return false;
+
+	//时间
+	SYSTEMTIME curT;
+	GetLocalTime(&curT);
+	fprintf_s(pF, "%d-%02d-%02d %02d:%02d:%02d ", curT.wYear, curT.wMonth, curT.wDay, curT.wHour, curT.wMinute, curT.wSecond);
+	
+	//switch (mode)
+	//{
+	//case 0:
+	//	{
+	std::string name;
+	GetScreenType(g_Result.m_screenType, name);
+	fprintf_s(pF, "  %s  ", name.c_str());
+	if (g_Result.m_resType == RES_TYPE_OK)
+	{
+		if (g_vctResult.size() > 0) //屏幕检测NG
+		{
+			fprintf_s(pF, "  NG  \n");
+			//显示NG的详细内容
+			for (int i = 0; i < g_vctResult.size(); i++)
+			{
+				fprintf_s(pF, "    %s Area: %.2lf\n", g_vctResult[i].m_strMsg.c_str(), g_vctResult[i].m_Area);
+			}
+		}
+		else //屏幕检测OK
+		{
+			fprintf_s(pF, "  OK  \n");
+		}
+	}
+	else //屏幕区域ng
+	{
+		fprintf_s(pF, "  NG  \n");
+		//显示NG的详细内容
+		fprintf_s(pF, "    %s\n", g_Result.m_strMsg.c_str());
+	}
+	fclose(pF);
+	return true;
+}
 //判断结果，并在屏幕上显示结果，图像 ， OKNG
 bool JudgeResultAndShow(T_SCR screenType, bool show = false )
 {
@@ -1940,6 +2013,7 @@ bool JudgeResultAndShow(T_SCR screenType, bool show = false )
 		WriteString(hv_WindowHandle, "NG");
 		
 		WriteString(hv_WindowHandle, g_Result.m_strMsg.c_str());
+		LogResult("Log.txt",0);
 		return false;
 	}
 
@@ -1973,6 +2047,7 @@ bool JudgeResultAndShow(T_SCR screenType, bool show = false )
 			SetTposition(hv_WindowHandle, HTuple(0 + 55), (HTuple(0)));
 			SetColor(hv_WindowHandle, "green");
 			WriteString(hv_WindowHandle, "OK");
+			LogResult("Log.txt", 0);
 			return true;
 		}
 		else
@@ -1986,8 +2061,10 @@ bool JudgeResultAndShow(T_SCR screenType, bool show = false )
 			WriteString(hv_WindowHandle, "NG");
 			//SetTposition(wndhandle, HTuple(0 + 55), (HTuple(0) + 5));
 			//WriteString(hv_WindowHandle, g_Result.m_strMsg.c_str());
+			LogResult("Log.txt", 0);
 			return false;
 		}
+		
 	}
 
 	//显示NG
@@ -1999,6 +2076,7 @@ bool EslCheckLightScreen()
 	g_Para = g_Para_White;
 	g_Result.m_screenType = T_WHITE_SCR;
 	g_Result.m_resType = RES_TYPE_OK;
+	g_vctResult.clear();
 	if (EslFindScreen())
 	{
 		//如果屏幕区域缺陷，则直接报NG， 不用查找亮点暗点
@@ -2033,6 +2111,7 @@ bool EslCheckRedScreen()
 {
 	g_Result.m_screenType = T_RED_SCR;
 	g_Result.m_resType = RES_TYPE_OK;
+	g_vctResult.clear();
 	g_Para = g_Para_Red;
 	if (EslFindScreen())
 	{
@@ -2072,6 +2151,7 @@ bool EslCheckGreenScreen()
 {
 	g_Result.m_screenType = T_GREEN_SCR;
 	g_Result.m_resType = RES_TYPE_OK;
+	g_vctResult.clear();
 	g_Para = g_Para_Green;
 	if (EslFindScreen())
 	{
@@ -2109,6 +2189,7 @@ bool EslCheckBlueScreen()
 {
 	g_Result.m_screenType = T_BLUE_SCR;
 	g_Result.m_resType = RES_TYPE_OK;
+	g_vctResult.clear();
 	g_Para = g_Para_Blue;
 	if (EslFindScreen())
 	{
@@ -2147,6 +2228,7 @@ bool EslCheckBlackScreen()
 {
 	g_Result.m_screenType = T_BLACK_SCR;
 	g_Result.m_resType = RES_TYPE_OK;
+	g_vctResult.clear();
 	g_Para = g_Para_Black;
 	if (EslFindScreen())
 	{
@@ -3070,12 +3152,12 @@ void JudgeResult(HObject ho_ResultRegions, HObject ho_ImageSrc, HObject *ho_Imag
 			(*hv_Row2).Append(R2);
 			(*hv_Col2).Append(C2);
 			//4) 截图
-			CropPart(ho_ImageSrc, &ho_ImagePart, R1, C1, hv_boxW, hv_boxH);
-			ConcatObj((*ho_ImageParts), ho_ImagePart, &(*ho_ImageParts));
-			if (count >= hv_MaxShowNum)
-			{
-				break;
-			}
+			//CropPart(ho_ImageSrc, &ho_ImagePart, R1, C1, hv_boxW, hv_boxH);
+			//ConcatObj((*ho_ImageParts), ho_ImagePart, &(*ho_ImageParts));
+			//if (count >= hv_MaxShowNum)
+			//{
+			//	break;
+			//}
 			count++;
 		}
 	}

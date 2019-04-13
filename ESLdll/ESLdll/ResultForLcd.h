@@ -4,7 +4,7 @@
 #pragma once
 #include "ParaForLcd.h"
 enum Type_Res {
-	RES_TYPE_ERROR = -1, //发生错误
+	RES_TYPE_ERROR = 0, //发生错误
 	RES_TYPE_OK,		//正常
 	RES_TYPE_SCREEN,    //屏幕不完整
 	RES_TYPE_BRIGHT_SPOT, //亮点

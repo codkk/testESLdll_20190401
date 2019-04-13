@@ -81,7 +81,7 @@ CtestESLdllDlg::CtestESLdllDlg(CWnd* pParent /*=NULL*/)
 
 	pFuncSaveImage = NULL;
 
-	m_hTestEvent = CreateEventA(NULL, TRUE, FALSE, NULL);
+	m_hTestEvent = CreateEventA(NULL, TRUE, TRUE, NULL);
 }
 
 CtestESLdllDlg::~CtestESLdllDlg()
@@ -347,7 +347,7 @@ BOOL CtestESLdllDlg::OnInitDialog()
 	int iRlt = m_serverNet.ServerInit("127.0.0.1", 3000);
 	if (iRlt == 0)
 	{
-		m_strMsg.Format("初始化成功。请点击开始。");
+		m_strMsg.Format("初始化成功。");
 		SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
 		//AfxMessageBox("服务器 init successful.\n");
 		//m_serverNet.ServerRun();
@@ -645,7 +645,7 @@ int CtestESLdllDlg::ServerRun()
 			break;
 		}
 		// 接收信息
-		m_strMsg = "等待接收下一个命令...";
+		m_strMsg = "Waiting Next Command...";
 		if(bClear)
 			SendMessage(WM_MYMSG, 1, (LPARAM)&m_strMsg);
 		else
@@ -684,7 +684,7 @@ int CtestESLdllDlg::ServerRun()
 				{
 					// 显示接收到的数据
 					printf("recv msg: %s\n", buf);
-					m_strMsg.Format("  接收到:%s", buf);
+					m_strMsg.Format("  Recv: %s", buf);
 					SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
 					//根据不同数据，调用不同的接口,并返回数据
 					std::string Msg = buf;
