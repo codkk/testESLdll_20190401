@@ -124,6 +124,16 @@ HObject g_ImageRed;    //红色分量图像
 HObject g_ImageGreen;  //绿色分量图像
 HObject g_ImageBlue;   //蓝色分量图像
 HObject g_RegionScreen;//屏幕区域
+HObject g_RegionScreenWhite;//白色屏幕区域
+HObject g_RegionScreenRed;//红色屏幕区域
+HObject g_RegionScreenGreen;//绿色屏幕区域
+HObject g_RegionScreenBlue;//蓝色屏幕区域
+HObject g_RegionScreenBlack;//黑色屏幕区域
+bool    g_IsScreenValidWhite = false;
+bool    g_IsScreenValidRed = false;
+bool    g_IsScreenValidGreen = false;
+bool    g_IsScreenValidBlue = false;
+bool    g_IsScreenValidBlack = false;
 
 HObject g_ImageParts;
 
@@ -2080,7 +2090,16 @@ bool EslCheckLightScreen()
 	if (EslFindScreen())
 	{
 		//如果屏幕区域缺陷，则直接报NG， 不用查找亮点暗点
-		if (!JudgeResultAndShow(g_Result.m_screenType)) return false;
+		if (!JudgeResultAndShow(g_Result.m_screenType))
+		{
+			g_IsScreenValidWhite = false;
+			return false;
+		}
+		else
+		{
+			g_IsScreenValidWhite = true;
+			g_RegionScreenWhite = g_RegionScreen.Clone();
+		}
 		
 		//检测亮点暗点
 		g_Result.m_resType = RES_TYPE_OK;
@@ -2104,6 +2123,10 @@ bool EslCheckLightScreen()
 		else
 			return true;
 	}
+	else
+	{
+		g_IsScreenValidWhite = false;
+	}
 	return false;
 }
 
@@ -2115,7 +2138,16 @@ bool EslCheckRedScreen()
 	g_Para = g_Para_Red;
 	if (EslFindScreen())
 	{
-		if (!JudgeResultAndShow(g_Result.m_screenType)) return false;
+		if (!JudgeResultAndShow(g_Result.m_screenType))
+		{
+			g_IsScreenValidRed = false;
+			return false;
+		}
+		else
+		{
+			g_IsScreenValidRed = true;
+			g_RegionScreenRed = g_RegionScreen.Clone();
+		}
 
 		g_Result.m_resType = RES_TYPE_OK;
 		HObject ho_ConnectedRegions, ho_ConnectedRegions_Light;
@@ -2142,6 +2174,7 @@ bool EslCheckRedScreen()
 	}
 	else
 	{
+		g_IsScreenValidRed = false;
 		return false;
 	}
 	return true;
@@ -2155,7 +2188,17 @@ bool EslCheckGreenScreen()
 	g_Para = g_Para_Green;
 	if (EslFindScreen())
 	{
-		if (!JudgeResultAndShow(g_Result.m_screenType)) return false;
+		
+		if (!JudgeResultAndShow(g_Result.m_screenType))
+		{
+			g_IsScreenValidGreen = false;
+			return false;
+		}
+		else
+		{
+			g_IsScreenValidGreen = true;
+			g_RegionScreenGreen = g_RegionScreen.Clone();
+		}
 
 		g_Result.m_resType = RES_TYPE_OK;
 		HObject ho_ConnectedRegions, ho_ConnectedRegions_Light;
@@ -2180,6 +2223,7 @@ bool EslCheckGreenScreen()
 	}
 	else
 	{
+		g_IsScreenValidGreen = false;
 		return false;
 	}
 	return true;
@@ -2193,7 +2237,16 @@ bool EslCheckBlueScreen()
 	g_Para = g_Para_Blue;
 	if (EslFindScreen())
 	{
-		if (!JudgeResultAndShow(g_Result.m_screenType)) return false;
+		if (!JudgeResultAndShow(g_Result.m_screenType))
+		{
+			g_IsScreenValidBlue = false;
+			return false;
+		}
+		else
+		{
+			g_IsScreenValidBlue = true;
+			g_RegionScreenBlue = g_RegionScreen.Clone();
+		}
 
 		g_Result.m_resType = RES_TYPE_OK;
 		HObject ho_ConnectedRegions, ho_ConnectedRegions_Light;
@@ -2218,6 +2271,7 @@ bool EslCheckBlueScreen()
 	}
 	else
 	{
+		g_IsScreenValidBlue = false;
 		return false;
 	}
 	return true;
@@ -2232,8 +2286,14 @@ bool EslCheckBlackScreen()
 	g_Para = g_Para_Black;
 	if (EslFindScreen())
 	{
+		g_IsScreenValidBlack = g_IsScreenValidWhite;
+		if (!g_IsScreenValidWhite) //如果白屏区域找不到，则黑屏也不测了
+		{
+			g_Result.m_resType = RES_TYPE_SCREEN;
+		}
 		if (!JudgeResultAndShow(g_Result.m_screenType)) return false;
-		
+		g_RegionScreenBlack = g_RegionScreenWhite.Clone();
+
 		g_Result.m_resType = RES_TYPE_OK;
 		HObject RegionResult;
 		HTuple hv_HysteresisMin, hv_HysteresisMax, hv_AreaThr1, hv_MeanSize1, hv_DynThr;
@@ -2242,12 +2302,12 @@ bool EslCheckBlackScreen()
 		hv_AreaThr1 = g_Para.m_AreaThr;
 		hv_MeanSize1 = g_Para.m_MeanSize_Black;
 		hv_DynThr = g_Para.m_DynThr_Black;
-		CheckLightSpotInDarkScreen(g_ImageGray, g_RegionScreen, &RegionResult, hv_HysteresisMin,
+		CheckLightSpotInDarkScreen(g_ImageGray, g_RegionScreenBlack, &RegionResult, hv_HysteresisMin,
 			hv_HysteresisMax, hv_AreaThr1, hv_MeanSize1, hv_DynThr);
 		
 		DispObj(g_Image, hv_WindowHandle);
 		SetColor(hv_WindowHandle, "green");
-		DispObj(g_RegionScreen, hv_WindowHandle);
+		DispObj(g_RegionScreenBlack, hv_WindowHandle);
 		SetColor(hv_WindowHandle, "red");
 		DispObj(RegionResult, hv_WindowHandle);
 

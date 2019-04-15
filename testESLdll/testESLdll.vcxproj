@@ -197,6 +197,7 @@
     <ClInclude Include="Resource.h" />
     <ClInclude Include="ServerNet.h" />
     <ClInclude Include="stdafx.h" />
+    <ClInclude Include="SystemSettingDlg.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="testESLdll.h" />
     <ClInclude Include="testESLdllDlg.h" />
@@ -217,6 +218,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="SystemSettingDlg.cpp" />
     <ClCompile Include="testESLdll.cpp" />
     <ClCompile Include="testESLdllDlg.cpp" />
     <ClCompile Include="XFunc.cpp" />

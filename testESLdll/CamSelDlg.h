@@ -27,5 +27,7 @@ public:
 	virtual BOOL OnInitDialog();
 	afx_msg void OnBnClickedButtonSavecam();
 	bool saveCamConfig(char* pPath);
+	bool loadCamConfig(char* pPath);
 	CString m_strCamName;
+	CString m_strCamIniFile;
 };

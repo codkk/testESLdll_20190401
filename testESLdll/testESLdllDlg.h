@@ -16,6 +16,9 @@ using namespace HalconCpp;
 #define TXT_PATH_IMG ".//SaveImg"
 #define TXT_PATH_IMG_ROOT "D://SaveImage"
 #define TXT_PATH_LOG_ROOT "D://LogFile"
+
+#define PATH_SYS_CONFIG "Config\\SystemConfig.ini"
+#define NODE_SYS_CONFIG "System"
 //extern class ParaForLcd;
 typedef bool(*initDllFunc)(CWnd* pWnd);  //初始化
 typedef bool(*setResWndFunc)(int screenType, CWnd* pWnd);  //初始化
@@ -108,6 +111,8 @@ public:
 
 	//服务器
 	ServerNet m_serverNet;
+	int m_nTestDelay;  //开始测试时的延时(ms)，为了使颜色切换到稳定的状态后才开始测试
+
 // 实现
 protected:
 	HICON m_hIcon;
@@ -135,6 +140,9 @@ public:
 	afx_msg LRESULT ShowResult(WPARAM, LPARAM);//自定义消息处理，显示结果
 	void SaveImagetoFile(bool ret, T_SCR type);
 	bool GetImagefrom(bool bLoad = false);
+	bool saveSysConfig(char* pPath); //系统设置
+	bool loadSysConfig(char* pPath); //系统设置
+
 	afx_msg void OnBnClickedButtonSaveimg();
 	afx_msg void OnBnClickedButton6();
 	afx_msg void OnBnClickedButton7();

@@ -55,6 +55,8 @@ BOOL CamSelDlg::OnInitDialog()
 	CDialog::OnInitDialog();
 
 	// TODO:  在此添加额外的初始化
+	loadCamConfig(PATH_CAM_CONFIG);
+
 	//查看当前的相机
 	try
 	{
@@ -112,6 +114,8 @@ void CamSelDlg::OnBnClickedButtonSavecam()
 		return;
 	}
 	m_comboCameralist.GetLBText(nsel, m_strCamName);
+	m_strCamIniFile.Format("%s.ini", m_strCamName.GetBuffer());
+
 	if (saveCamConfig(PATH_CAM_CONFIG))
 	{
 		AfxMessageBox("保存成功");
@@ -130,7 +134,30 @@ bool  CamSelDlg::saveCamConfig(char* pPath)
 	{
 		return false;
 	}
+	if (!iniFile.SetValue(NODE_CAM_CONFIG, "IniFile", m_strCamIniFile)) //最大值
+	{
+		return false;
+	}
 	if (!iniFile.Write(pPath))
+	{
+		return false;
+	}
+	return true;
+}
+
+bool CamSelDlg::loadCamConfig(char* pPath)
+{
+	CIni iniFile;
+	if (!iniFile.Read(pPath))
+	{
+		return false;
+	}
+
+	if (!iniFile.GetValue(NODE_CAM_CONFIG, "Name", m_strCamName)) //最大值
+	{
+		return false;
+	}
+	if (!iniFile.GetValue(NODE_CAM_CONFIG, "IniFile", m_strCamIniFile)) //最大值
 	{
 		return false;
 	}

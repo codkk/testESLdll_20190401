@@ -9,6 +9,7 @@
 #include "Ini.h"
 #include "CamSelDlg.h"
 #include "XFunc.h"
+#include "SystemSettingDlg.h"
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -60,7 +61,7 @@ CtestESLdllDlg::CtestESLdllDlg(CWnd* pParent /*=NULL*/)
 	m_bExit = false;
 	m_bInitSuccess = TRUE;
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
-
+	m_nTestDelay = 0;
 	pInitDll = NULL;
 	pUnInitDll = NULL;
 
@@ -167,14 +168,18 @@ BOOL CtestESLdllDlg::OnInitDialog()
 		CreateFolder(m_strPathLog);
 	}
 
-	//每打开软件一次，则在当前日期文件夹下创建一个日志
 
+	if (!loadSysConfig(PATH_SYS_CONFIG))
+	{
+		//saveSysConfig(PATH_SYS_CONFIG);
+		AfxMessageBox("Load System config failed");
+	}
 
 	// TODO: 在此添加额外的初始化代码
 	dllHandle = LoadLibrary("ESLdll.dll");
 	if (dllHandle == NULL)
 	{
-		AfxMessageBox("LOAD FAIL");
+		AfxMessageBox("LOAD ESLdll FAIL");
 		return TRUE;
 	}
 
@@ -601,7 +606,16 @@ void CtestESLdllDlg::OnBnClickedButton8()
 //参数设置
 void CtestESLdllDlg::OnBnClickedButtonSetting()
 {
-	// TODO: 在此添加控件通知处理程序代码
+	SystemSettingDlg dlg;
+	dlg.m_nTestDelay = m_nTestDelay;
+	if (IDOK == dlg.DoModal())
+	{
+		m_nTestDelay = dlg.m_nTestDelay;
+		if (!saveSysConfig(PATH_SYS_CONFIG))
+		{
+			AfxMessageBox("保存参数失败");
+		}
+	}
 }
 
 //自动运行
@@ -731,6 +745,7 @@ std::string CtestESLdllDlg::RunFromMsg(std::string Msg) //根据消息运行不同的功能
 	bool ret = false;
 	if ("WHITE" == Msg)
 	{
+		Sleep(m_nTestDelay); //延时一下，使颜色变化稳定下来。
 		m_strMsg.Format("  开始白屏测试...");
 		SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
 		if (!GetImagefrom(bLoadImg)) return "NG";
@@ -751,6 +766,7 @@ std::string CtestESLdllDlg::RunFromMsg(std::string Msg) //根据消息运行不同的功能
 	}
 	else if ("RED" == Msg)
 	{
+		Sleep(m_nTestDelay);
 		m_strMsg.Format("  开始红屏测试...");
 		SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
 		if (!GetImagefrom(bLoadImg)) return "NG";
@@ -761,6 +777,7 @@ std::string CtestESLdllDlg::RunFromMsg(std::string Msg) //根据消息运行不同的功能
 	}
 	else if ("GREEN" == Msg)
 	{
+		Sleep(m_nTestDelay);
 		m_strMsg.Format("  开始绿屏测试...");
 		SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
 		if (!GetImagefrom(bLoadImg)) return "NG";
@@ -770,6 +787,7 @@ std::string CtestESLdllDlg::RunFromMsg(std::string Msg) //根据消息运行不同的功能
 	}
 	else if ("BLUE" == Msg)
 	{
+		Sleep(m_nTestDelay);
 		m_strMsg.Format("  开始蓝屏测试...");
 		SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
 		if (!GetImagefrom(bLoadImg)) return "NG";
@@ -779,6 +797,7 @@ std::string CtestESLdllDlg::RunFromMsg(std::string Msg) //根据消息运行不同的功能
 	}
 	else if ("BLACK" == Msg)
 	{
+		Sleep(m_nTestDelay);
 		m_strMsg.Format("  开始黑屏测试...");
 		SendMessage(WM_MYMSG, 0, (LPARAM)&m_strMsg);
 		if (!GetImagefrom(bLoadImg)) return "NG";
@@ -926,6 +945,37 @@ bool CtestESLdllDlg::GetImagefrom(bool bLoad)
 	else
 		ret = pFuncGrabOneImage();
 	return ret;
+}
+
+bool CtestESLdllDlg::saveSysConfig(char * pPath)
+{
+	CIni iniFile;
+	if (!iniFile.SetValue(NODE_SYS_CONFIG, "TestDelay", m_nTestDelay)) 
+	{
+		return false;
+	}
+
+	if (!iniFile.Write(pPath))
+	{
+		return false;
+	}
+	return true;
+}
+
+bool CtestESLdllDlg::loadSysConfig(char * pPath)
+{
+	CIni iniFile;
+	if (!iniFile.Read(pPath))
+	{
+		return false;
+	}
+
+	if (!iniFile.GetValue(NODE_SYS_CONFIG, "TestDelay", m_nTestDelay))
+	{
+		return false;
+	}
+
+	return true;
 }
 
 
